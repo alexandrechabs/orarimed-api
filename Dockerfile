@@ -1,44 +1,51 @@
-# Dockerfile
-FROM node:20-alpine AS base
+ARG NODE_IMAGE=node:20.11.1-slim
 
-# Installer les dépendances système nécessaires
-RUN apk add --no-cache tini
+# --------------------
+# Base
+# --------------------
+FROM $NODE_IMAGE AS base
 
-# Créer le répertoire de l'application
+USER root
+RUN apt-get update && apt-get install -y \
+    dumb-init \
+    libvips-dev \
+    build-essential \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 WORKDIR /home/node/app
+USER node
 
-# Installer les dépendances
-COPY package*.json pnpm-lock.yaml* ./
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN pnpm install --frozen-lockfile
-
-# Copier les fichiers sources
-COPY . .
-
-# Construire l'application
-RUN pnpm run build
-
-# Étape de production
-FROM node:20-alpine
-
-# Installer tini
-RUN apk add --no-cache tini
-
-WORKDIR /home/node/app
-
-# Copier les fichiers nécessaires
-COPY --from=base /home/node/app/package*.json ./
-COPY --from=base /home/node/app/node_modules ./node_modules
-COPY --from=base /home/node/app/build ./build
-
-# Installer uniquement les dépendances de production
-RUN pnpm prune --prod
-
-# Exposer le port de l'application
+# --------------------
+# Dev
+# --------------------
+FROM base AS dev
+COPY --chown=node:node package*.json ./
+RUN npm install
+COPY --chown=node:node . .
 EXPOSE 3333
+CMD ["node", "ace", "serve", "--watch", "--host=0.0.0.0"]
 
-# Utiliser tini comme processus parent
-ENTRYPOINT ["/sbin/tini", "--"]
+# --------------------
+# Build
+# --------------------
+FROM base AS build
+COPY --chown=node:node package*.json ./
+RUN npm ci
+COPY --chown=node:node . .
+RUN node ace build
 
-# Commande pour démarrer l'application
-CMD ["node", "build/server.js"]
+# --------------------
+# Production
+# --------------------
+FROM base AS production
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3333
+
+COPY --chown=node:node --from=build /home/node/app/build ./build
+COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
+COPY --chown=node:node package*.json ./
+
+EXPOSE 3333
+CMD ["dumb-init", "node", "build/server.js"]
