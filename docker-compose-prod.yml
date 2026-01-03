@@ -31,6 +31,8 @@ services:
       target: production
     ports:
       - '3334:3333'
+    env_file:
+      - .env
     environment:
       HOST: 0.0.0.0
       PORT: 3333
