@@ -17,23 +17,13 @@ WORKDIR /home/node/app
 USER node
 
 # --------------------
-# Dev
-# --------------------
-FROM base AS dev
-COPY --chown=node:node package*.json ./
-RUN npm install
-COPY --chown=node:node . .
-EXPOSE 3333
-CMD ["node", "ace", "serve", "--watch", "--host=0.0.0.0"]
-
-# --------------------
 # Build
 # --------------------
 FROM base AS build
 COPY --chown=node:node package*.json ./
 RUN npm ci
 COPY --chown=node:node . .
-RUN node ace build
+RUN node ace build --production
 
 # --------------------
 # Production
@@ -48,4 +38,5 @@ COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node package*.json ./
 
 EXPOSE 3333
+
 CMD ["dumb-init", "node", "build/server.js"]
