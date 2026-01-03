@@ -1,8 +1,5 @@
 ARG NODE_IMAGE=node:20.11.1-slim
 
-# --------------------
-# Base
-# --------------------
 FROM $NODE_IMAGE AS base
 
 USER root
@@ -38,4 +35,4 @@ COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node package*.json ./
 
 EXPOSE 3333
-CMD ["dumb-init", "node", "build/server.js"]
+CMD ["dumb-init", "node", "build/ace.js", "serve"]
