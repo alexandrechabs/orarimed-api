@@ -23,7 +23,7 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
-            cd /home/ubuntu/boulder-problem-api
-            git pull origin master
+            cd /home/ubuntu/orarimed-api
+            git pull origin main
             docker compose -f docker-compose-prod.yml up -d --build
           EOF
