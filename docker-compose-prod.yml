@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   app:
-    image: ghcr.io/${{ github.repository_owner }}/orarimed-api:${TAG:-latest}
+    build: .
     restart: always
     env_file: .env.production
     environment:
@@ -27,15 +27,15 @@ services:
     restart: always
     env_file: .env.production
     environment:
-      - POSTGRES_USER=${DB_USER_ADMIN}
-      - POSTGRES_PASSWORD=${DB_PASSWORD_ADMIN}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=${DB_DATABASE}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - '5433:5432'
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER_ADMIN} -d ${DB_DATABASE}']
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_DATABASE}']
       interval: 5s
       timeout: 5s
       retries: 5
