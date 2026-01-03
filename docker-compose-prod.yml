@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: production
     restart: always
     env_file: .env.production
     environment:
@@ -16,11 +18,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3333/health']
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   postgres:
     image: postgis/postgis:16-3.4-alpine
