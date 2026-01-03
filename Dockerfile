@@ -23,7 +23,7 @@ FROM base AS build
 COPY --chown=node:node package*.json ./
 RUN npm ci
 COPY --chown=node:node . .
-RUN node ace build --production
+RUN node ace build
 
 # --------------------
 # Production
@@ -38,5 +38,4 @@ COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 COPY --chown=node:node package*.json ./
 
 EXPOSE 3333
-
 CMD ["dumb-init", "node", "build/server.js"]
