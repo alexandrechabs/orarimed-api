@@ -1,0 +1,55 @@
+# Dependencies and AdonisJS build
+node_modules/
+build/
+tmp/
+
+# Secrets
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Frontend assets compiled code
+public/assets
+
+# Build tools specific
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors specific
+.fleet/
+.idea/
+.vscode/
+*.sublime-*
+
+# Platform specific
+.DS_Store
+Thumbs.db
+
+# Docker files
+docker-compose.override.yml
+.docker/
+
+# Logs
+logs
+*.log
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Local development
+.vercel/
+.netlify/
+
+# Production build files
+dist/
+
+# Environment files (except examples)
+!.env.example
+!.env.production.example

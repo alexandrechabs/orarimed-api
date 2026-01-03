@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: postgres_orari
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER_ADMIN}
+      POSTGRES_PASSWORD: ${DB_PASSWORD_ADMIN}
+      POSTGRES_DB: ${DB_DATABASE}
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+      - ./dockerConfig/init.sh:/docker-entrypoint-initdb.d/init.sh
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER_ADMIN}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - orarimed-network
+
+  adonis_app:
+    container_name: adonis_orari
+    depends_on:
+      postgres:
+        condition: service_healthy
+    build:
+      context: .
+      target: dev
+    ports:
+      - '3334:3333'
+      - '9230:9229'
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3333
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+    volumes:
+      - ./:/home/node/app
+      - /home/node/app/node_modules
+    command: sh -c "node ace migration:run || true && node ace serve --watch"
+    networks:
+      - orarimed-network
+
+networks:
+  orarimed-network:
+    driver: bridge
+
+volumes:
+  postgres_volume:
