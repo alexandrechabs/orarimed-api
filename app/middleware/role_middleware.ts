@@ -12,10 +12,15 @@ export default class AuthMiddleware {
    */
   redirectTo = '/login'
 
-  async handle({ auth, response, request }: HttpContext, next: NextFn, guards: string[]) {
-    const roleIds = guards.map((guard: string) => Roles[guard])
+  async handle(
+    { auth, response, request }: HttpContext,
+    next: NextFn,
+    guards: (keyof typeof Roles)[]
+  ) {
+    const roleIds = guards.map((guard) => Roles[guard])
+    const userRole = auth.user?.roleId as Roles | undefined
 
-    if (!roleIds.includes(auth.user?.roleId)) {
+    if (!userRole || !roleIds.includes(userRole)) {
       return response.unauthorized({ error: `This is restricted to ${guards.join(', ')} users` })
     }
     // code for middleware goes here. ABOVE THE NEXT CALL
