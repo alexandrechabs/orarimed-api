@@ -12,11 +12,7 @@ export default class AuthMiddleware {
    */
   redirectTo = '/login'
 
-  async handle(
-    { auth, response, request }: HttpContext,
-    next: NextFn,
-    guards: (keyof typeof Roles)[]
-  ) {
+  async handle({ auth, response }: HttpContext, next: NextFn, guards: (keyof typeof Roles)[]) {
     const roleIds = guards.map((guard) => Roles[guard])
     const userRole = auth.user?.roleId as Roles | undefined
 
