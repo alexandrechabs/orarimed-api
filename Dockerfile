@@ -14,6 +14,20 @@ WORKDIR /home/node/app
 USER node
 
 # --------------------
+# Dev
+# --------------------
+FROM base AS dev
+ENV NODE_ENV=development
+
+COPY --chown=node:node package*.json ./
+RUN npm install
+
+COPY --chown=node:node . .
+
+EXPOSE 3333 9229
+CMD ["dumb-init", "node", "ace", "serve", "--watch"]
+
+# --------------------
 # Build
 # --------------------
 FROM base AS build
