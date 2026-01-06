@@ -4,15 +4,17 @@ import { compose } from '@adonisjs/core/helpers'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
+import { Opaque } from '@adonisjs/core/types/helpers'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
   passwordColumnName: 'password',
 })
+export type userId = Opaque<'userId', string>
 
 export default class User extends compose(BaseModel, AuthFinder) {
   @column({ isPrimary: true })
-  declare id: number
+  declare id: userId
 
   @column()
   declare firstname: string
@@ -28,6 +30,30 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @column()
   declare genderId: number
+
+  @column()
+  declare bio: string
+
+  @column()
+  declare avatar: string
+
+  @column()
+  declare birthDate: Date
+
+  @column()
+  declare phoneNumber: string
+
+  @column()
+  declare address: string
+
+  @column()
+  declare city: string
+
+  @column()
+  declare zipCode: string
+
+  @column()
+  declare country: string
 
   @column({ serializeAs: null })
   declare password: string
