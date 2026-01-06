@@ -53,4 +53,4 @@ COPY --chown=node:node --from=build /home/node/app/build ./build
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
 
 EXPOSE 3333
-CMD ["dumb-init", "node", "build/ace.js", "serve"]
+CMD [ "dumb-init", "node", "build/server.js" ]
