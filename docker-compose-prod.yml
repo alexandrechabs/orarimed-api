@@ -40,6 +40,8 @@ services:
       DB_DATABASE: ${DB_DATABASE}
     volumes:
       - adonis_app_data:/home/node/app/build/uploads
+    command: >
+      dumb-init sh -c "node build/ace migration:run --force && node build/server.js"
 
 volumes:
   postgres_volume:
