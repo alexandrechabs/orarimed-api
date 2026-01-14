@@ -59,7 +59,7 @@ services:
     volumes:
       - ./:/home/node/app
       - /home/node/app/node_modules
-    command: sh -c "node ace migration:run --connection=primary && node ace migration:run --connection=secure && node ace migration:run --connection=audit && node ace serve --watch"
+    command: sh -c "node build/ace.js migration:run --connection=primary && node build/ace.js migration:run --connection=secure && node build/ace.js migration:run --connection=audit && node build/ace.js serve --watch"
     networks:
       - orarimed-network
 
