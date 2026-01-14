@@ -35,7 +35,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: 3333
-      DB_HOST: postgres
+      DB_HOST: postgres-prod
       DB_PORT: 5432
       DB_APP_USER: orarimed_app
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
