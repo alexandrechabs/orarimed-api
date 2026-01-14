@@ -41,9 +41,9 @@ services:
       DB_APP_USER: orarimed_app
       DB_APP_PASSWORD: ${DB_APP_PASSWORD}
       DB_APP_DATABASE: orarimed
-      DB_SECONDARY_USER: orarimed_secure
-      DB_SECONDARY_PASSWORD: ${DB_SECURE_PASSWORD}
-      DB_SECONDARY_DATABASE: orarimed_secure
+      DB_SECURE_USER: orarimed_secure
+      DB_SECURE_PASSWORD: ${DB_SECURE_PASSWORD}
+      DB_SECURE_DATABASE: orarimed_secure
       DB_AUDIT_USER: orarimed_audit
       DB_AUDIT_PASSWORD: ${DB_AUDIT_PASSWORD}
       DB_AUDIT_DATABASE: orarimed_audit
