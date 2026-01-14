@@ -24,8 +24,7 @@ services:
     container_name: adonis_orari
     restart: always
     depends_on:
-      postgres-prod:
-        condition: service_healthy
+      - postgres-prod
     build:
       context: .
       target: production
