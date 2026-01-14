@@ -31,4 +31,11 @@ export const UserValidator = {
       phoneNumber: vine.string().trim().optional(),
     })
   ),
+  search: vine.compile(
+    vine.object({
+      firstName: vine.string().trim().minLength(2).maxLength(50),
+      lastName: vine.string().trim().minLength(2).maxLength(50),
+      birthDate: vine.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+  ),
 }

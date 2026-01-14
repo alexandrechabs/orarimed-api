@@ -19,7 +19,7 @@ export default class extends BaseSchema {
       table.string('city').nullable()
       table.string('zip_code').nullable()
       table.string('country').nullable()
-      table.string('phone').nullable()
+      table.string('phone_number').nullable()
       table.timestamp('created_at').notNullable()
       table.timestamp('updated_at').nullable()
     })
