@@ -7,15 +7,10 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER_ADMIN}
       POSTGRES_PASSWORD: ${DB_PASSWORD_ADMIN}
-      APP_DB: orarimed
-      SECURE_DB: orarimed_secure
-      AUDIT_DB: orarimed_audit
-      APP_USER: orarimed_app
-      SECURE_USER: orarimed_secure
-      AUDIT_USER: orarimed_audit
-      APP_PASSWORD: ${DB_APP_PASSWORD}
-      SECURE_PASSWORD: ${DB_SECURE_PASSWORD}
-      AUDIT_PASSWORD: ${DB_AUDIT_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
     volumes:
       - postgres_volume:/var/lib/postgresql/data
       - ./dockerConfig/init.sh:/docker-entrypoint-initdb.d/init.sh
@@ -47,19 +42,13 @@ services:
       PORT: 3333
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_APP_USER: orarimed_app
-      DB_APP_PASSWORD: ${DB_APP_PASSWORD}
-      DB_APP_DATABASE: orarimed
-      DB_SECURE_USER: orarimed_secure
-      DB_SECURE_PASSWORD: ${DB_SECURE_PASSWORD}
-      DB_SECURE_DATABASE: orarimed_secure
-      DB_AUDIT_USER: orarimed_audit
-      DB_AUDIT_PASSWORD: ${DB_AUDIT_PASSWORD}
-      DB_AUDIT_DATABASE: orarimed_audit
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
     volumes:
       - ./:/home/node/app
       - /home/node/app/node_modules
-    command: sh -c "node ace migration:run --connection=primary && node ace migration:run --connection=secure && node ace migration:run --connection=audit && node ace serve --watch"
+    command: sh -c "node ace migration:run || true && node ace serve --watch"
     networks:
       - orarimed-network
 

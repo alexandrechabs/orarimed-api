@@ -14,6 +14,8 @@ export const UserValidator = {
           return !user
         }),
       password: vine.string().minLength(8).maxLength(32),
+      kind: vine.number(),
+      acceptTerms: vine.boolean(),
     })
   ),
 
@@ -25,10 +27,15 @@ export const UserValidator = {
       roleId: vine.number().optional(),
       address: vine.string().trim().optional(),
       city: vine.string().trim().optional(),
-      zipCode: vine.string().trim().optional(),
       country: vine.string().trim().optional(),
       birthDate: vine.date().optional(),
       phoneNumber: vine.string().trim().optional(),
+      coordinate: vine
+        .object({
+          lat: vine.number(),
+          lng: vine.number(),
+        })
+        .optional(),
     })
   ),
   search: vine.compile(

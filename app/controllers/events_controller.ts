@@ -1,4 +1,5 @@
-import Events from '#models/events'
+import Contact from '#models/contacts'
+import Event from '#models/events'
 import User from '#models/user'
 import { EventValidator } from '#validators/event'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -6,10 +7,9 @@ import { DateTime } from 'luxon'
 
 interface EventData {
   title: string
-  description: string
+  description?: string
   allDay?: boolean
-  backgroundColor?: string
-  borderColor?: string
+  color?: string
   start?: Date
   end?: Date
   startRecur?: Date
@@ -17,8 +17,16 @@ interface EventData {
   daysOfWeek?: number[]
   startTime?: string
   endTime?: string
-  patientId?: string
-  practitionerId?: string
+  practitionerId: string
+  contactId?: number
+  notes?: string
+  patient: {
+    id?: number
+    firstname: string
+    lastname: string
+    phoneNumber: string
+    email: string
+  }
 }
 
 export default class EventsController {
@@ -27,10 +35,39 @@ export default class EventsController {
 
     const data = (await request.validateUsing(EventValidator.create)) as EventData
 
+    let contact
+    if (!data.patient.id) {
+      // create contact and check if user exist
+      contact = await Contact.query()
+        .where('phoneNumber', data.patient.phoneNumber)
+        .andWhere('practitionerId', data.practitionerId)
+        .first()
+      console.log(contact)
+      if (!contact) {
+        let user = await User.query().where('phoneNumber', data.patient.phoneNumber).first()
+        console.log(user)
+
+        // create contact
+        contact = await Contact.create({
+          patientId: user?.id,
+          practitionerId: data.practitionerId,
+          firstname: data.patient.firstname,
+          lastname: data.patient.lastname,
+          email: data.patient.email,
+          phoneNumber: data.patient.phoneNumber,
+        })
+        console.log(contact)
+      }
+    }
     if (auth_user.roleId === 2) {
-      const eventData: Partial<InstanceType<typeof Events>> = {
-        ...data,
+      console.log(data)
+
+      const eventData: Partial<InstanceType<typeof Event>> = {
+        title: data.title,
+        contactId: contact?.id,
         practitionerId: auth_user.id,
+        description: data.description,
+        notes: data?.notes,
         start: data.start ? DateTime.fromJSDate(data.start) : null,
         end: data.end ? DateTime.fromJSDate(data.end) : null,
         startRecur: data.startRecur ? DateTime.fromJSDate(data.startRecur) : null,
@@ -39,12 +76,17 @@ export default class EventsController {
         endTime: data.endTime || null,
         daysOfWeek: data.daysOfWeek || null,
         allDay: data.allDay || false,
-        backgroundColor: data.backgroundColor || 'hsl(var(--primary))',
-        borderColor: data.borderColor || null,
+        color: data.color || 'hsl(var(--primary))',
       }
 
-      const event = await Events.create(eventData)
-      return event.toJSON()
+      const event = await Event.create(eventData)
+
+      return await Event.query()
+        .where('id', event.id)
+        .preload('patient', (query) => {
+          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+        })
+        .first()
     }
 
     return response.unauthorized({ message: 'Unauthorized' })
@@ -59,7 +101,11 @@ export default class EventsController {
       const startDate = DateTime.fromISO(start)
       const endDate = DateTime.fromISO(end)
       // retourne les events entre start et end
-      const events = await Events.query()
+
+      const events = await Event.query()
+        .preload('patient', (query) => {
+          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+        })
         .where('practitionerId', auth_user.id)
         .andWhere((query) => {
           // Événements non récurrents qui se trouvent dans la plage
@@ -79,7 +125,7 @@ export default class EventsController {
     }
 
     if (auth_user.roleId === 2) {
-      const events = await Events.query().where('practitionerId', auth_user.id)
+      const events = await Event.query().where('practitionerId', auth_user.id)
       return events
     }
 
@@ -89,10 +135,14 @@ export default class EventsController {
   async update({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
     const data = (await request.validateUsing(EventValidator.update)) as EventData
-    const event = await Events.find(request.param('id'))
+    const event = await Event.find(request.param('id'))
     if (event && event.practitionerId === auth_user.id) {
       event.merge({
-        ...data,
+        title: data.title,
+        contactId: data.contactId,
+        practitionerId: auth_user.id,
+        description: data.description,
+        notes: data?.notes,
         start: data.start ? DateTime.fromJSDate(data.start) : null,
         end: data.end ? DateTime.fromJSDate(data.end) : null,
         startRecur: data.startRecur ? DateTime.fromJSDate(data.startRecur) : null,
@@ -101,8 +151,7 @@ export default class EventsController {
         endTime: data.endTime || null,
         daysOfWeek: data.daysOfWeek || null,
         allDay: data.allDay || false,
-        backgroundColor: data.backgroundColor || 'hsl(var(--primary))',
-        borderColor: data.borderColor || null,
+        color: data.color || 'hsl(var(--primary))',
       })
       await event.save()
       return event

@@ -14,7 +14,8 @@ export default class AuthController {
         password: data.password,
         firstname: data.firstname,
         lastname: data.lastname,
-        roleId: 1, // Rôle USER par défaut
+        roleId: data.kind,
+        acceptTerms: data.acceptTerms,
       })
 
       const token = await User.accessTokens.create(user)

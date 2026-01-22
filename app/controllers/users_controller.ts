@@ -70,8 +70,11 @@ export default class UsersController {
 
     const data = await request.validateUsing(UserValidator.update)
 
-    console.log(data)
-
+    if (data.coordinate) {
+      const { lat, lng } = data.coordinate
+      // @ts-ignore - The point type expects a string in the format '(x,y)'
+      data.coordinate = `(${lng},${lat})`
+    }
     user.merge(data)
     await user.save()
 

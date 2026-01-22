@@ -3,6 +3,7 @@ import router from '@adonisjs/core/services/router'
 import { middleware } from './kernel.js'
 import UsersController from '#controllers/users_controller'
 import EventsController from '#controllers/events_controller'
+import SpecialitiesController from '#controllers/specialities_controller'
 
 router.get('/', async () => {
   return {
@@ -45,3 +46,5 @@ router
 router
   .put('events/:id', [EventsController, 'update'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router.get('specialities', [SpecialitiesController, 'index'])
+router.post('specialities', [SpecialitiesController, 'create'])

@@ -17,9 +17,9 @@ export const EventValidator = {
   create: vine.compile(
     vine.object({
       title: vine.string(),
-      patientId: vine.string().optional(),
-      practitionerId: vine.string().optional(),
-      description: vine.string(),
+      contactId: vine.string().optional(),
+      practitionerId: vine.string(),
+      description: vine.string().optional(),
       // Accepter les chaînes ISO ou les objets Date
       start: vine
         .any()
@@ -42,8 +42,7 @@ export const EventValidator = {
         })
         .optional(),
       allDay: vine.boolean().optional(),
-      backgroundColor: vine.string().optional(),
-      borderColor: vine.string().optional(),
+      color: vine.string().optional(),
       startRecur: vine
         .any()
         .optional()
@@ -69,15 +68,22 @@ export const EventValidator = {
       daysOfWeek: vine.array(vine.number().min(0).max(6)).optional(),
       startTime: timeFormat.optional(),
       endTime: timeFormat.optional(),
+      notes: vine.string().optional(),
+      patient: vine.object({
+        id: vine.number().optional(),
+        firstname: vine.string(),
+        lastname: vine.string(),
+        phoneNumber: vine.string(),
+        email: vine.string(),
+      }),
     })
   ),
   update: vine.compile(
     vine.object({
       title: vine.string(),
       id: vine.string(),
-      patientId: vine.string().optional(),
-      practitionerId: vine.string().optional(),
-      description: vine.string(),
+      practitionerId: vine.string(),
+      description: vine.string().optional(),
       // Accepter les chaînes ISO ou les objets Date
       start: vine
         .any()
@@ -100,8 +106,7 @@ export const EventValidator = {
         })
         .optional(),
       allDay: vine.boolean().optional(),
-      backgroundColor: vine.string().optional(),
-      borderColor: vine.string().optional(),
+      color: vine.string().optional(),
       startRecur: vine
         .any()
         .optional()
@@ -127,6 +132,15 @@ export const EventValidator = {
       daysOfWeek: vine.array(vine.number().min(0).max(6)).optional(),
       startTime: timeFormat.optional(),
       endTime: timeFormat.optional(),
+      patient: vine
+        .object({
+          id: vine.number().optional(),
+          firstname: vine.string(),
+          lastname: vine.string(),
+          phoneNumber: vine.string(),
+          email: vine.string(),
+        })
+        .optional(),
     })
   ),
 }

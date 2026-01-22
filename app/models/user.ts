@@ -32,6 +32,12 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare genderId: number
 
   @column()
+  declare active: boolean
+
+  @column()
+  declare acceptTerms: boolean
+
+  @column()
   declare bio: string
 
   @column()
@@ -50,10 +56,10 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare city: string
 
   @column()
-  declare zipCode: string
+  declare country: string
 
   @column()
-  declare country: string
+  declare coordinate: any
 
   @column({ serializeAs: null })
   declare password: string
