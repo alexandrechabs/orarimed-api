@@ -7,6 +7,9 @@ export default class extends BaseSchema {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
       table.string('slug').notNullable().unique()
+      table.string('icon')
+      table.string('color')
+      table.integer('position')
       table.timestamps(true)
     })
   }

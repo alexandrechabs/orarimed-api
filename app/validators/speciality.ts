@@ -7,6 +7,9 @@ export const SpecialityValidator = {
         vine.object({
           id: vine.number().optional(),
           slug: vine.string().trim().minLength(2).maxLength(50),
+          icon: vine.string().optional(),
+          color: vine.string().optional(),
+          position: vine.number(),
           subSpecialities: vine.array(
             vine.object({
               id: vine.number().optional(),

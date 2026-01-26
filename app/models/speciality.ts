@@ -11,15 +11,20 @@ export default class Speciality extends BaseModel {
   @column()
   declare slug: string
 
+  @column()
+  declare icon: string | null
+
+  @column()
+  declare color: string | null
+
+  @column()
+  declare position: number
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
-
-  /* -----------------------
-     RELATIONS
-  ------------------------ */
 
   @hasMany(() => SpecialityTranslation)
   declare translations: HasMany<typeof SpecialityTranslation>

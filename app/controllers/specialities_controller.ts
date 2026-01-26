@@ -11,6 +11,7 @@ export default class SpecialitiesController {
     return await Speciality.query()
       .preload('translations')
       .preload('subSpecialities', (q) => q.preload('translations'))
+      .orderBy('position', 'asc')
   }
 
   async create({ request, response }: HttpContext) {
@@ -34,6 +35,9 @@ export default class SpecialitiesController {
           : new Speciality()
 
         speciality.slug = item.slug
+        speciality.icon = item.icon ?? null
+        speciality.color = item.color ?? null
+        speciality.position = item.position
         speciality.useTransaction(trx)
         await speciality.save()
         savedIds.push(speciality.id)
@@ -122,6 +126,7 @@ export default class SpecialitiesController {
       return await Speciality.query()
         .preload('translations')
         .preload('subSpecialities', (q) => q.preload('translations'))
+        .orderBy('position', 'asc')
     } catch (error) {
       await trx.rollback()
       console.error(error)
