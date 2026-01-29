@@ -11,13 +11,12 @@ import sharp from 'sharp'
 import * as fs from 'node:fs/promises'
 import { cuid } from '@adonisjs/core/helpers'
 import { Readable } from 'node:stream'
-import { request } from 'node:http'
 
 export default class UsersController {
   /**
    * Get all users (paginated)
    */
-  async index({ request, response }: HttpContext) {
+  async index({ request }: HttpContext) {
     const page = request.input('page', 1)
     const limit = request.input('limit', 10)
 
@@ -290,7 +289,7 @@ export default class UsersController {
     return user
   }
 
-  async showDoctor({ params, response, auth }: HttpContext) {
+  async showDoctor({ params }: HttpContext) {
     const user = await User.query()
       .where('doctorIdentifier', params.id)
       .select([
@@ -362,7 +361,7 @@ export default class UsersController {
     return result
   }
 
-  async searchDoctor({ params }: HttpContext) {
+  async searchDoctor(_: HttpContext) {
     let lat = '48.84216010000001'
     let lon = '2.3015332'
     // comment récupérer les docteurs proches des coordonnées gps ?
