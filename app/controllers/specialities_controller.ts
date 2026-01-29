@@ -5,6 +5,8 @@ import Speciality from '#models/speciality'
 import SubSpeciality from '#models/sub_speciality'
 import SpecialityTranslation from '#models/speciality_translation'
 import SubSpecialityTranslation from '#models/sub_speciality_translation'
+import SubSpecialitiesUsers from '#models/sub_specialities_users'
+import User from '#models/user'
 
 export default class SpecialitiesController {
   async index({}: HttpContext) {
@@ -136,5 +138,31 @@ export default class SpecialitiesController {
         message: 'Erreur lors de la sauvegarde des spécialités',
       })
     }
+  }
+
+  async saveSubSpecialitiesUsers({ auth, request }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    const payload = await request.validateUsing(SpecialityValidator.addSubSpeciality)
+
+    payload.subSpecialities.forEach(async (subSpecialityId) => {
+      await SubSpecialitiesUsers.updateOrCreate(
+        {
+          subSpecialityId,
+          userId: auth_user.id,
+        },
+        {
+          subSpecialityId,
+          userId: auth_user.id,
+        }
+      )
+    })
+
+    // delete sub specialities users not in payload
+    await SubSpecialitiesUsers.query()
+      .where('userId', auth_user.id)
+      .whereNotIn('subSpecialityId', payload.subSpecialities)
+      .delete()
+
+    return
   }
 }

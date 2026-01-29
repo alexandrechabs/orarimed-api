@@ -1,5 +1,7 @@
-import { BaseModel, column, computed } from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column, computed } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
+import User from './user.js'
+import { type BelongsTo } from '@adonisjs/lucid/types/relations'
 
 export type PeriodType = 'morning' | 'afternoon'
 
@@ -40,4 +42,9 @@ export default class OpeningHour extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+
+  @belongsTo(() => User, {
+    foreignKey: 'userId',
+  })
+  declare user: BelongsTo<typeof User>
 }

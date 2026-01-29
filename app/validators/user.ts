@@ -24,12 +24,14 @@ export const UserValidator = {
       firstname: vine.string().trim().minLength(2).maxLength(50).optional(),
       lastname: vine.string().trim().minLength(2).maxLength(50).optional(),
       genderId: vine.number().optional(),
+      avatar: vine.string().trim().optional(),
       roleId: vine.number().optional(),
       address: vine.string().trim().optional(),
       city: vine.string().trim().optional(),
       country: vine.string().trim().optional(),
       birthDate: vine.date().optional(),
       phoneNumber: vine.string().trim().optional(),
+      specialityId: vine.number().optional(),
       coordinate: vine
         .object({
           lat: vine.number(),
@@ -43,6 +45,12 @@ export const UserValidator = {
       firstName: vine.string().trim().minLength(2).maxLength(50),
       lastName: vine.string().trim().minLength(2).maxLength(50),
       birthDate: vine.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+  ),
+  searchDoctorAutoComplete: vine.compile(
+    vine.object({
+      q: vine.string().trim().minLength(2).maxLength(50),
+      locale: vine.string().trim().minLength(2).maxLength(2),
     })
   ),
 }

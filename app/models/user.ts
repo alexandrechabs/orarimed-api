@@ -1,10 +1,14 @@
 import { DateTime } from 'luxon'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeSave, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 import { Opaque } from '@adonisjs/core/types/helpers'
+import SubSpecialitiesUsers from './sub_specialities_users.js'
+import { type HasMany, type BelongsTo } from '@adonisjs/lucid/types/relations'
+import Speciality from './speciality.js'
+import OpeningHour from './opening_hour.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -56,10 +60,16 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare city: string
 
   @column()
+  declare doctorIdentifier: string | null
+
+  @column()
   declare country: string
 
   @column()
   declare coordinate: any
+
+  @column()
+  declare specialityId: number | null
 
   @column({ serializeAs: null })
   declare password: string
@@ -70,6 +80,19 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 
+  @beforeSave()
+  public static async createDoctorIdentifier(user: User) {
+    if (user.roleId === 2) {
+      // 2 est l'ID pour le rôle docteur
+      const firstname = user.firstname?.toLowerCase().trim() || ''
+      const lastname = user.lastname?.toLowerCase().trim() || ''
+      const city = user.city?.toLowerCase().trim() || ''
+      user.doctorIdentifier = `${firstname}-${lastname}-${city}`.replace(/\s+/g, '-')
+    } else {
+      user.doctorIdentifier = null
+    }
+  }
+
   static accessTokens = DbAccessTokensProvider.forModel(User, {
     expiresIn: '180 days',
     prefix: 'oat_',
@@ -77,4 +100,15 @@ export default class User extends compose(BaseModel, AuthFinder) {
     type: 'auth_token',
     tokenSecretLength: 40,
   })
+
+  @hasMany(() => SubSpecialitiesUsers)
+  declare subSpecialitiesUsers: HasMany<typeof SubSpecialitiesUsers>
+
+  @belongsTo(() => Speciality, {
+    foreignKey: 'specialityId',
+  })
+  declare speciality: BelongsTo<typeof Speciality>
+
+  @hasMany(() => OpeningHour)
+  declare openingHours: HasMany<typeof OpeningHour>
 }

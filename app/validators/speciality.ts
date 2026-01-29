@@ -34,4 +34,9 @@ export const SpecialityValidator = {
       ),
     })
   ),
+  addSubSpeciality: vine.compile(
+    vine.object({
+      subSpecialities: vine.array(vine.number()),
+    })
+  ),
 }

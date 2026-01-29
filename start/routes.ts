@@ -17,6 +17,9 @@ router
   .get('/user/', [UsersController, 'me'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
 router
+  .post('/user/upload', [UsersController, 'upload'])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+router
   .get('/user/:id', [UsersController, 'show'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
 router
@@ -25,6 +28,7 @@ router
 router
   .delete('/user/:id', [UsersController, 'destroy'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+router.get('/user/:id/avatar/:size', [UsersController, 'getAvatar'])
 router
   .get('user/:id/opening-hours', [UsersController, 'getOpeningHours'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
@@ -32,11 +36,20 @@ router
   .post('user/:id/opening-hours', [UsersController, 'addOpeningHour'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 router
+  .post('user/:id/sub-specialities', [SpecialitiesController, 'saveSubSpecialitiesUsers'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router
   .post('patients/search', [UsersController, 'searchPatient'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 router
   .get('patients/:id', [UsersController, 'showPatient'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router.get('doctor/search', [UsersController, 'searchDoctor'])
+router.get('doctor/search/autocomplete', [UsersController, 'searchDoctorAutoComplete'])
+router.get('doctor/:id', [UsersController, 'showDoctor'])
+
 router
   .post('events', [EventsController, 'create'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
@@ -46,5 +59,8 @@ router
 router
   .put('events/:id', [EventsController, 'update'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
 router.get('specialities', [SpecialitiesController, 'index'])
-router.post('specialities', [SpecialitiesController, 'create'])
+router
+  .post('specialities', [SpecialitiesController, 'create'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])

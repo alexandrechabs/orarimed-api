@@ -3,6 +3,15 @@ import User from '#models/user'
 import OpeningHour from '#models/opening_hour'
 import { UserValidator } from '../validators/user.js'
 import { OpeningHourValidator } from '../validators/opening_hour.js'
+import Speciality from '#models/speciality'
+import SubSpeciality from '#models/sub_speciality'
+import R2Service from '#services/R2Service'
+import app from '@adonisjs/core/services/app'
+import sharp from 'sharp'
+import * as fs from 'node:fs/promises'
+import { cuid } from '@adonisjs/core/helpers'
+import { Readable } from 'node:stream'
+import { request } from 'node:http'
 
 export default class UsersController {
   /**
@@ -16,7 +25,7 @@ export default class UsersController {
       .select(['id', 'firstname', 'lastname', 'email', 'roleId', 'genderId', 'createdAt'])
       .paginate(page, limit)
 
-    return response.ok(users)
+    return users
   }
 
   /**
@@ -28,7 +37,104 @@ export default class UsersController {
       return response.unauthorized({ error: 'Unauthorized' })
     }
 
-    return response.ok(user)
+    return await User.query().where('id', user.id).preload('subSpecialitiesUsers').firstOrFail()
+  }
+
+  public async upload({ auth, request, response }: HttpContext) {
+    const auth_user = auth.user! as User
+
+    if (auth_user.roleId === 1) {
+      return response.forbidden({ error: 'Not authorized to upload files' })
+    }
+
+    const file = request.file('file', {
+      size: '5mb',
+      extnames: ['jpg', 'jpeg', 'png', 'webp'],
+    })
+
+    if (!file) {
+      return response.badRequest({ message: 'Aucun fichier téléchargé' })
+    }
+
+    const tmpPath = app.tmpPath('uploads')
+    const baseName = cuid()
+
+    const sizes = {
+      sm: 128,
+      lg: 758,
+    }
+
+    try {
+      // 1️⃣ Fichier temporaire
+      await file.move(tmpPath)
+
+      if (!file.filePath) {
+        throw new Error('Échec du déplacement du fichier')
+      }
+
+      const r2Service = new R2Service()
+      const uploadedFiles: Record<string, string> = {}
+
+      // 2️⃣ Génération multi-tailles
+      for (const [key, size] of Object.entries(sizes)) {
+        const buffer = await sharp(file.filePath)
+          .resize(size, size, {
+            fit: 'cover',
+            position: 'centre',
+          })
+          .webp({ quality: 80 })
+          .toBuffer()
+
+        const filename = `user/${baseName}_${key}.webp`
+
+        await r2Service.uploadFile(filename, buffer, 'image/webp')
+
+        uploadedFiles[key] = filename
+      }
+
+      // 3️⃣ Nettoyage
+      await fs.unlink(file.filePath)
+
+      return response.send({
+        image: `user/${baseName}.webp`,
+      })
+    } catch (error) {
+      if (file.filePath) {
+        try {
+          await fs.unlink(file.filePath)
+        } catch {}
+      }
+
+      console.error(error)
+
+      return response.status(500).send({
+        error: 'Erreur lors du téléchargement du fichier',
+      })
+    }
+  }
+
+  async getAvatar({ params, response }: HttpContext) {
+    console.log(params.id)
+    let size = 'lg'
+    if (params.size && ['sm', 'lg'].includes(params.size)) {
+      size = params.size
+    }
+
+    const user = await User.find(params.id)
+
+    if (!user || !user.avatar || user.roleId !== 2) {
+      return response.notFound({ error: 'User not found' })
+    }
+
+    const r2Service = new R2Service()
+    const object = await r2Service.getImage(user.avatar.split('.')[0] + '_' + size + '.webp')
+
+    // Headers importants
+    response.header('Content-Type', object.ContentType || 'application/octet-stream')
+    response.header('Content-Length', object.ContentLength?.toString() || '')
+    response.header('Cache-Control', 'private, max-age=3600')
+
+    return response.stream(object.Body as Readable)
   }
 
   /**
@@ -41,14 +147,14 @@ export default class UsersController {
       return response.notFound({ error: 'User not found' })
     }
 
-    return response.ok({
+    return {
       id: user.id,
       firstname: user.firstname,
       lastname: user.lastname,
       email: user.email,
       genderId: user.genderId,
       createdAt: user.createdAt,
-    })
+    }
   }
 
   /**
@@ -78,7 +184,7 @@ export default class UsersController {
     user.merge(data)
     await user.save()
 
-    return response.ok(user)
+    return await User.query().where('id', user.id).preload('subSpecialitiesUsers').firstOrFail()
   }
 
   async getOpeningHours({ params, response }: HttpContext) {
@@ -107,8 +213,10 @@ export default class UsersController {
     const openingHours = await OpeningHour.query().where('userId', user.id)
 
     // on récupère le sid des heures d'ouverture
-    const openingHoursIds = data.openingHours.map((openingHour) => openingHour.id)
-
+    let openingHoursIds: number[] = []
+    if (data.openingHours) {
+      data.openingHours.map((openingHour) => openingHour.id)
+    }
     // on supprime les heures d'ouverture qui ne sont pas dans data
     for (const openingHour of openingHours) {
       if (!openingHoursIds.includes(openingHour.id)) {
@@ -116,15 +224,17 @@ export default class UsersController {
       }
     }
 
-    // Create all opening hours in a transaction
-    for (const openingHour of data.openingHours) {
-      await OpeningHour.create({
-        userId: user.id,
-        dayOfWeek: openingHour.dayOfWeek,
-        period: openingHour.period,
-        openTime: openingHour.openTime,
-        closeTime: openingHour.closeTime,
-      })
+    if (data.openingHours) {
+      // Create all opening hours in a transaction
+      for (const openingHour of data.openingHours) {
+        await OpeningHour.create({
+          userId: user.id,
+          dayOfWeek: openingHour.dayOfWeek,
+          period: openingHour.period,
+          openTime: openingHour.openTime,
+          closeTime: openingHour.closeTime,
+        })
+      }
     }
 
     return await OpeningHour.query().where('userId', user.id)
@@ -178,5 +288,91 @@ export default class UsersController {
       .firstOrFail()
 
     return user
+  }
+
+  async showDoctor({ params, response, auth }: HttpContext) {
+    const user = await User.query()
+      .where('doctorIdentifier', params.id)
+      .select([
+        'id',
+        'firstname',
+        'lastname',
+        'email',
+        'avatar',
+        'createdAt',
+        'specialityId',
+        'phoneNumber',
+        'city',
+        'bio',
+        'address',
+      ])
+      .preload('subSpecialitiesUsers', (query) => {
+        query.preload('subSpeciality', (query) => {
+          query.preload('translations')
+        })
+      })
+      .preload('speciality', (query) => {
+        query.preload('translations')
+      })
+      .preload('openingHours')
+      .firstOrFail()
+
+    return user
+  }
+
+  async searchDoctorAutoComplete({ request }: HttpContext) {
+    // add validator
+    const data = await request.validateUsing(UserValidator.searchDoctorAutoComplete)
+    // retourner toutes les catégories ou la tranduction de la catégorie correspondant au mot recherché
+    const specialities = await Speciality.query()
+      .whereHas('translations', (query) => {
+        query.where('locale', data.locale).whereILike('name', `%${data.q}%`)
+      })
+      .preload('translations', (query) => {
+        query.where('locale', data.locale)
+      })
+    const subSpecialities = await SubSpeciality.query()
+      .whereHas('translations', (query) => {
+        query.where('locale', data.locale).whereILike('name', `%${data.q}%`)
+      })
+      .preload('translations', (query) => {
+        query.where('locale', data.locale)
+      })
+
+    const doctors = await User.query()
+      .where('role_id', 2)
+      .whereILike('lastname', `%${data.q}%`)
+      .select([
+        'id',
+        'firstname',
+        'lastname',
+        'city',
+        'specialityId',
+        'doctorIdentifier',
+        'avatar',
+        'createdAt',
+      ])
+      .preload('speciality', (query) => {
+        query.preload('translations')
+      })
+      .limit(10)
+
+    let result = { specialities, subSpecialities, doctors }
+
+    return result
+  }
+
+  async searchDoctor({ params }: HttpContext) {
+    let lat = '48.84216010000001'
+    let lon = '2.3015332'
+    // comment récupérer les docteurs proches des coordonnées gps ?
+    let users = await User.query()
+      .where('role_id', 2)
+      .select(['id', 'firstname', 'lastname', 'email', 'createdAt'])
+      .where('coordinate', 'like', `%(${lat},${lon})%`)
+      .orderBy('coordinate', 'asc')
+      .limit(10)
+
+    return users
   }
 }

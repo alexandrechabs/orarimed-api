@@ -11,7 +11,7 @@ const openingHourSchema = vine.object({
 export const OpeningHourValidator = {
   create: vine.compile(
     vine.object({
-      openingHours: vine.array(openingHourSchema).minLength(1),
+      openingHours: vine.array(openingHourSchema).minLength(1).optional(),
     })
   ),
 }
