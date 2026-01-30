@@ -39,11 +39,23 @@ export default class UsersController {
     return await User.query().where('id', user.id).preload('subSpecialitiesUsers').firstOrFail()
   }
 
-  public async upload({ auth, request, response }: HttpContext) {
+  public async upload({ auth, params, request, response }: HttpContext) {
     const auth_user = auth.user! as User
+    let user = await User.find(params.id)
 
+    if (!user || user.id !== auth_user.id) {
+      return response.notFound({ error: 'User not found' })
+    }
+
+    // utile ou non ?
     if (auth_user.roleId === 1) {
       return response.forbidden({ error: 'Not authorized to upload files' })
+    }
+
+    const r2Service = new R2Service()
+
+    if (user.avatar) {
+      await r2Service.deleteFile(`user/${user.avatar}.webp`)
     }
 
     const file = request.file('file', {
@@ -58,11 +70,6 @@ export default class UsersController {
     const tmpPath = app.tmpPath('uploads')
     const baseName = cuid()
 
-    const sizes = {
-      sm: 128,
-      lg: 758,
-    }
-
     try {
       // 1️⃣ Fichier temporaire
       await file.move(tmpPath)
@@ -71,31 +78,25 @@ export default class UsersController {
         throw new Error('Échec du déplacement du fichier')
       }
 
-      const r2Service = new R2Service()
-      const uploadedFiles: Record<string, string> = {}
+      const buffer = await sharp(file.filePath)
+        .resize(800, 800, {
+          fit: 'cover',
+          position: 'centre',
+        })
+        .webp({ quality: 80 })
+        .toBuffer()
 
-      // 2️⃣ Génération multi-tailles
-      for (const [key, size] of Object.entries(sizes)) {
-        const buffer = await sharp(file.filePath)
-          .resize(size, size, {
-            fit: 'cover',
-            position: 'centre',
-          })
-          .webp({ quality: 80 })
-          .toBuffer()
+      const filename = `user/${baseName}.webp`
 
-        const filename = `user/${baseName}_${key}.webp`
+      await r2Service.uploadFile(filename, buffer, 'image/webp')
 
-        await r2Service.uploadFile(filename, buffer, 'image/webp')
-
-        uploadedFiles[key] = filename
-      }
+      await user.merge({ avatar: baseName }).save()
 
       // 3️⃣ Nettoyage
       await fs.unlink(file.filePath)
 
       return response.send({
-        image: `user/${baseName}.webp`,
+        image: baseName,
       })
     } catch (error) {
       if (file.filePath) {
@@ -113,12 +114,6 @@ export default class UsersController {
   }
 
   async getAvatar({ params, response }: HttpContext) {
-    console.log(params.id)
-    let size = 'lg'
-    if (params.size && ['sm', 'lg'].includes(params.size)) {
-      size = params.size
-    }
-
     const user = await User.find(params.id)
 
     if (!user || !user.avatar || user.roleId !== 2) {
@@ -126,7 +121,7 @@ export default class UsersController {
     }
 
     const r2Service = new R2Service()
-    const object = await r2Service.getImage(user.avatar.split('.')[0] + '_' + size + '.webp')
+    const object = await r2Service.getImage(`user/${user.avatar}.webp`)
 
     // Headers importants
     response.header('Content-Type', object.ContentType || 'application/octet-stream')
@@ -361,17 +356,98 @@ export default class UsersController {
     return result
   }
 
-  async searchDoctor(_: HttpContext) {
-    let lat = '48.84216010000001'
-    let lon = '2.3015332'
-    // comment récupérer les docteurs proches des coordonnées gps ?
-    let users = await User.query()
-      .where('role_id', 2)
-      .select(['id', 'firstname', 'lastname', 'email', 'createdAt'])
-      .where('coordinate', 'like', `%(${lat},${lon})%`)
-      .orderBy('coordinate', 'asc')
-      .limit(10)
+  async searchDoctor({ request, response }: HttpContext) {
+    try {
+      // Récupérer et valider les paramètres de la requête
+      const { lat, lng, q, address, locale } = await request.validateUsing(
+        UserValidator.searchDoctor
+      )
 
-    return users
+      console.log('Recherche de médecins avec les paramètres:', {
+        lat,
+        lng,
+        q,
+        address,
+        locale,
+      })
+
+      // Construire la requête de base
+      const query = User.query()
+        .where('role_id', 2) // Filtre pour les médecins
+        .whereRaw(
+          `ST_DWithin(
+          ST_MakePoint(?, ?)::geography,
+          ST_MakePoint(ST_X(coordinate::geometry), ST_Y(coordinate::geometry))::geography,
+          10000
+        )`,
+          [lng, lat] // PostgreSQL utilise l'ordre (longitude, latitude)
+        )
+
+      // Filtrer par spécialité ou sous-spécialité si un terme de recherche est fourni
+      if (q) {
+        query.where((subQuery) => {
+          // Recherche dans les spécialités
+          subQuery
+            .whereHas('speciality', (specialityQuery) => {
+              specialityQuery.whereHas('translations', (translationQuery) => {
+                translationQuery.where('name', 'ilike', `%${q}%`).andWhere('locale', locale)
+              })
+            })
+            // OU recherche dans les sous-spécialités
+            .orWhereHas('subSpecialities', (subSpecialityQuery) => {
+              subSpecialityQuery.whereHas('translations', (translationQuery) => {
+                translationQuery.where('name', 'ilike', `%${q}%`).andWhere('locale', locale)
+              })
+            })
+        })
+      }
+
+      // Sélectionner les champs nécessaires
+      query.select([
+        'users.id',
+        'users.firstname',
+        'users.lastname',
+        'users.email',
+        'users.avatar',
+        'users.speciality_id',
+        'users.city',
+        'users.address',
+        'users.coordinate',
+        'users.created_at',
+      ])
+
+      // Inclure la distance dans les résultats
+      query.select(
+        User.query().client.raw(
+          'ST_Distance(ST_MakePoint(?, ?)::geography, ST_MakePoint(ST_X(coordinate::geometry), ST_Y(coordinate::geometry))::geography) as distance',
+          [lng, lat]
+        )
+      )
+
+      // Trier par distance
+      query.orderBy('distance', 'asc')
+
+      // Limiter les résultats
+      query.limit(50)
+
+      // Charger les relations nécessaires
+      query.preload('speciality', (query) => {
+        query.preload('translations')
+      })
+      query.preload('subSpecialities', (query) => {
+        query.preload('translations')
+      })
+
+      const doctors = await query
+
+      return doctors
+    } catch (error) {
+      console.error('Erreur lors de la recherche de médecins:', error)
+      return response.status(500).json({
+        status: 'error',
+        message: 'Une erreur est survenue lors de la recherche de médecins',
+        details: error.message,
+      })
+    }
   }
 }

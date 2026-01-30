@@ -53,4 +53,15 @@ export const UserValidator = {
       locale: vine.string().trim().minLength(2).maxLength(2),
     })
   ),
+  searchDoctor: vine.compile(
+    vine.object({
+      address: vine.any().transform((value: string | string[]) => {
+        return Array.isArray(value) ? value.join(',') : value
+      }),
+      lat: vine.string().transform(Number),
+      lng: vine.string().transform(Number),
+      locale: vine.string().trim(),
+      q: vine.string().trim(),
+    })
+  ),
 }

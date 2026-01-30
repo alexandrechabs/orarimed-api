@@ -1,13 +1,14 @@
 import { DateTime } from 'luxon'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
-import { BaseModel, beforeSave, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
+import { BaseModel, beforeSave, belongsTo, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 import { Opaque } from '@adonisjs/core/types/helpers'
 import SubSpecialitiesUsers from './sub_specialities_users.js'
-import { type HasMany, type BelongsTo } from '@adonisjs/lucid/types/relations'
+import { type HasMany, type BelongsTo, type ManyToMany } from '@adonisjs/lucid/types/relations'
 import Speciality from './speciality.js'
+import SubSpeciality from './sub_speciality.js'
 import OpeningHour from './opening_hour.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
@@ -103,6 +104,13 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @hasMany(() => SubSpecialitiesUsers)
   declare subSpecialitiesUsers: HasMany<typeof SubSpecialitiesUsers>
+
+  @manyToMany(() => SubSpeciality, {
+    pivotTable: 'sub_specialities_users',
+    pivotForeignKey: 'user_id',
+    pivotRelatedForeignKey: 'sub_speciality_id',
+  })
+  declare subSpecialities: ManyToMany<typeof SubSpeciality>
 
   @belongsTo(() => Speciality, {
     foreignKey: 'specialityId',

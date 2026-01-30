@@ -1,5 +1,5 @@
 import { r2Client } from '#config/r2'
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 
 export default class R2Service {
   private bucket = process.env.R2_BUCKET
@@ -24,6 +24,15 @@ export default class R2Service {
     })
 
     return await r2Client.send(command)
+  }
+
+  async deleteFile(key: string) {
+    const command = new DeleteObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+    })
+
+    await r2Client.send(command)
   }
 
   getPublicUrl(key: string) {

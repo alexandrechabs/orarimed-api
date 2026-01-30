@@ -16,9 +16,7 @@ router.post('/login', [AuthController, 'login'])
 router
   .get('/user/', [UsersController, 'me'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
-router
-  .post('/user/upload', [UsersController, 'upload'])
-  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+
 router
   .get('/user/:id', [UsersController, 'show'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
@@ -28,7 +26,10 @@ router
 router
   .delete('/user/:id', [UsersController, 'destroy'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
-router.get('/user/:id/avatar/:size', [UsersController, 'getAvatar'])
+router
+  .post('/user/:id/upload', [UsersController, 'upload'])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+router.get('/user/:id/avatar/:avatar', [UsersController, 'getAvatar'])
 router
   .get('user/:id/opening-hours', [UsersController, 'getOpeningHours'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
