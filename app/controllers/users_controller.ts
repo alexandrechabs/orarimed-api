@@ -374,6 +374,7 @@ export default class UsersController {
       // Construire la requête de base
       const query = User.query()
         .where('role_id', 2) // Filtre pour les médecins
+        .whereNotNull('coordinate')
         .whereRaw(
           `ST_DWithin(
           ST_MakePoint(?, ?)::geography,
