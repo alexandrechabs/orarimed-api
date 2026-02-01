@@ -577,7 +577,6 @@ export default class UsersController {
           second: 0,
           millisecond: 0,
         })
-        console.log(currentSlot)
 
         // Vérifier chaque créneau de la durée spécifiée
         while (currentSlot.plus({ minutes: slotDuration }) <= endTime) {
