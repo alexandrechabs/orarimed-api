@@ -1,16 +1,18 @@
 import { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
+import Event from '#models/events'
+import Speciality from '#models/speciality'
+import SubSpeciality from '#models/sub_speciality'
 import OpeningHour from '#models/opening_hour'
 import { UserValidator } from '../validators/user.js'
 import { OpeningHourValidator } from '../validators/opening_hour.js'
-import Speciality from '#models/speciality'
-import SubSpeciality from '#models/sub_speciality'
 import R2Service from '#services/R2Service'
 import app from '@adonisjs/core/services/app'
 import sharp from 'sharp'
 import * as fs from 'node:fs/promises'
 import { cuid } from '@adonisjs/core/helpers'
 import { Readable } from 'node:stream'
+import { DateTime } from 'luxon'
 
 export default class UsersController {
   /**
@@ -227,6 +229,7 @@ export default class UsersController {
           period: openingHour.period,
           openTime: openingHour.openTime,
           closeTime: openingHour.closeTime,
+          timeZone: openingHour.timeZone,
         })
       }
     }
@@ -414,6 +417,7 @@ export default class UsersController {
         'users.city',
         'users.address',
         'users.coordinate',
+        'users.doctor_identifier',
         'users.created_at',
       ])
 
@@ -450,5 +454,173 @@ export default class UsersController {
         details: error.message,
       })
     }
+  }
+
+  async getAvailableSlots({ params, request, response }: HttpContext) {
+    const { id } = params
+    const { date, duration = 30 } = request.qs() // durée en minutes
+
+    // 1. Récupérer le médecin avec ses horaires
+    const doctor = await User.query().preload('openingHours').where('id', id).firstOrFail()
+
+    // if (doctor.roleId !== 2 || doctor.active === false) {
+    if (doctor.roleId !== 2) {
+      return response.unauthorized({ message: 'Unauthorized' })
+    }
+    const openingHours = doctor.openingHours
+
+    // 2. Récupérer les événements du jour
+    let startDate = DateTime.fromISO(date).startOf('day')
+    const now = DateTime.now()
+    if (startDate < now.startOf('day')) {
+      startDate = now
+    }
+    const endDate = startDate.plus({ days: 7 }).endOf('day')
+
+    const events = await Event.query()
+      .where('practitionerId', id)
+      .andWhere((query) => {
+        // Événements non récurrents qui se trouvent dans la plage
+        query
+          .where('is_recurring', false)
+          .andWhere('start', '<=', endDate.toJSDate())
+          .andWhere('end', '>=', startDate.toJSDate())
+          // OU événements récurrents
+          .orWhere((subQuery) => {
+            subQuery
+              .where('is_recurring', true)
+              .where('start_recur', '<=', endDate.toJSDate())
+              .where('end_recur', '>=', startDate.toJSDate())
+          })
+      })
+
+    // 3. Calculer les créneaux disponibles
+    const slots = this.calculateAvailableSlots({
+      openingHours,
+      events,
+      date: startDate,
+      slotDuration: duration,
+    })
+
+    return response.ok(slots)
+  }
+
+  private calculateAvailableSlots({
+    openingHours,
+    events,
+    date,
+    slotDuration,
+  }: {
+    openingHours: any
+    events: Event[]
+    date: DateTime
+    slotDuration: number
+  }) {
+    const slots = []
+    const now = DateTime.now()
+
+    // Boucler sur les 7 prochains jours
+    for (let day = 0; day < 7; day++) {
+      const currentDate = date.plus({ days: day })
+      const dayOfWeek = currentDate.weekday // 1 (lundi) à 7 (dimanche)
+      const dayOpeningHours = openingHours.filter(
+        (openingHour: any) => openingHour.dayOfWeek === dayOfWeek
+      )
+
+      if (!dayOpeningHours || !dayOpeningHours.length) {
+        continue // Passe au jour suivant si pas d'heures d'ouverture
+      }
+      const isToday = currentDate.hasSame(now, 'day')
+
+      // Pour chaque plage d'ouverture de la journée
+      for (const range of dayOpeningHours) {
+        let [startHours, startMinutes] = range.openTime.split(':').map(Number)
+        const [endHours, endMinutes] = range.closeTime.split(':').map(Number)
+
+        if (isToday) {
+          const currentHour = now.hour
+          const currentMinute = now.minute
+
+          // Si l'heure de début est passée, commencer au prochain créneau
+          if (
+            startHours < currentHour ||
+            (startHours === currentHour && startMinutes < currentMinute)
+          ) {
+            startMinutes = Math.ceil((currentMinute + 1) / 15) * 15 // Arrondir au quart d'heure supérieur
+
+            if (startMinutes >= 60) {
+              startHours += Math.floor(startMinutes / 60)
+              startMinutes = startMinutes % 60
+            }
+            startHours += currentHour - startHours
+
+            // Si on dépasse l'heure de fermeture, passer au jour suivant
+
+            if (startHours > endHours || (startHours === endHours && startMinutes >= endMinutes)) {
+              continue
+            }
+          }
+        }
+
+        console.log(range.timeZone)
+
+        let currentSlot = currentDate.setZone(range.timeZone).set({
+          hour: startHours,
+          minute: startMinutes,
+          second: 0,
+          millisecond: 0,
+        })
+
+        const endTime = currentDate.setZone(range.timeZone).set({
+          hour: endHours,
+          minute: endMinutes,
+          second: 0,
+          millisecond: 0,
+        })
+        console.log(currentSlot)
+
+        // Vérifier chaque créneau de la durée spécifiée
+        while (currentSlot.plus({ minutes: slotDuration }) <= endTime) {
+          const slotEnd = currentSlot.plus({ minutes: slotDuration })
+          let isAvailable = true
+
+          // Vérifier les conflits avec les événements
+          for (const event of events) {
+            if (event.start && event.end) {
+              const eventStart = event.start
+              const eventEnd = event.end
+
+              if (
+                this.isSlotOverlapping(
+                  { start: currentSlot, end: slotEnd },
+                  { start: eventStart, end: eventEnd }
+                )
+              ) {
+                isAvailable = false
+                break
+              }
+            }
+          }
+
+          if (isAvailable) {
+            slots.push({
+              start: currentSlot.toISO(),
+              end: slotEnd.toISO(),
+            })
+          }
+
+          currentSlot = currentSlot.plus({ minutes: 15 }) // Pas de 15 minutes entre les créneaux
+        }
+      }
+    }
+
+    return slots
+  }
+
+  private isSlotOverlapping(
+    slot1: { start: DateTime; end: DateTime },
+    slot2: { start: DateTime; end: DateTime }
+  ) {
+    return slot1.start < slot2.end && slot1.end > slot2.start
   }
 }

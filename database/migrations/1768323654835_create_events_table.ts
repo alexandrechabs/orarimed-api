@@ -8,6 +8,7 @@ export default class extends BaseSchema {
       table.uuid('id').primary().defaultTo(this.db.rawQuery('gen_random_uuid()').knexQuery)
 
       table.string('title').notNullable()
+      table.string('type').notNullable()
       // Note: Pas de contrainte de clé étrangère car la table users est dans une autre base de données
       table
         .integer('contact_id')

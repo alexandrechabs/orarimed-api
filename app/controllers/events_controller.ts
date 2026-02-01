@@ -7,6 +7,7 @@ import { DateTime } from 'luxon'
 
 interface EventData {
   title: string
+  type: string
   description?: string
   allDay?: boolean
   color?: string
@@ -33,19 +34,24 @@ export default class EventsController {
   async create({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
 
-    const data = (await request.validateUsing(EventValidator.create)) as EventData
+    let type = request.input('type')
+    let data
+    if (type === 'appointment') {
+      data = (await request.validateUsing(EventValidator.createEvent)) as EventData
+    } else {
+      data = (await request.validateUsing(EventValidator.createAbsence)) as EventData
+    }
 
     let contact
-    if (!data.patient.id) {
+
+    if (type === 'appointment' && !data.patient.id) {
       // create contact and check if user exist
       contact = await Contact.query()
         .where('phoneNumber', data.patient.phoneNumber)
         .andWhere('practitionerId', data.practitionerId)
         .first()
-      console.log(contact)
       if (!contact) {
         let user = await User.query().where('phoneNumber', data.patient.phoneNumber).first()
-        console.log(user)
 
         // create contact
         contact = await Contact.create({
@@ -56,14 +62,12 @@ export default class EventsController {
           email: data.patient.email,
           phoneNumber: data.patient.phoneNumber,
         })
-        console.log(contact)
       }
     }
     if (auth_user.roleId === 2) {
-      console.log(data)
-
       const eventData: Partial<InstanceType<typeof Event>> = {
         title: data.title,
+        type: data.type,
         contactId: contact?.id,
         practitionerId: auth_user.id,
         description: data.description,

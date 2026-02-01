@@ -14,9 +14,10 @@ function validateDate(value: unknown) {
 }
 
 export const EventValidator = {
-  create: vine.compile(
+  createEvent: vine.compile(
     vine.object({
       title: vine.string(),
+      type: vine.string(),
       contactId: vine.string().optional(),
       practitionerId: vine.string(),
       description: vine.string().optional(),
@@ -78,9 +79,68 @@ export const EventValidator = {
       }),
     })
   ),
+  createAbsence: vine.compile(
+    vine.object({
+      title: vine.string(),
+      type: vine.string(),
+      contactId: vine.string().optional(),
+      practitionerId: vine.string(),
+      description: vine.string().optional(),
+      // Accepter les chaînes ISO ou les objets Date
+      start: vine
+        .any()
+        .transform((value) => {
+          try {
+            return validateDate(value)
+          } catch {
+            throw new Error('The start field must be a valid date or ISO date string')
+          }
+        })
+        .optional(),
+      end: vine
+        .any()
+        .transform((value) => {
+          try {
+            return validateDate(value)
+          } catch {
+            throw new Error('The end field must be a valid date or ISO date string')
+          }
+        })
+        .optional(),
+      allDay: vine.boolean().optional(),
+      color: vine.string().optional(),
+      startRecur: vine
+        .any()
+        .optional()
+        .transform((value) => {
+          if (!value) return null
+          try {
+            return validateDate(value)
+          } catch {
+            throw new Error('The startRecur field must be a valid date or ISO date string')
+          }
+        }),
+      endRecur: vine
+        .any()
+        .optional()
+        .transform((value) => {
+          if (!value) return null
+          try {
+            return validateDate(value)
+          } catch {
+            throw new Error('The endRecur field must be a valid date or ISO date string')
+          }
+        }),
+      daysOfWeek: vine.array(vine.number().min(0).max(6)).optional(),
+      startTime: timeFormat.optional(),
+      endTime: timeFormat.optional(),
+      notes: vine.string().optional(),
+    })
+  ),
   update: vine.compile(
     vine.object({
       title: vine.string(),
+      type: vine.string(),
       id: vine.string(),
       practitionerId: vine.string(),
       description: vine.string().optional(),

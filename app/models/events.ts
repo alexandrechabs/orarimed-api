@@ -16,7 +16,10 @@ export default class Event extends BaseModel {
   declare title: string
 
   @column()
-  declare contactId: number
+  declare type: string
+
+  @column()
+  declare contactId: number | null
 
   @column()
   declare practitionerId: string

@@ -24,6 +24,7 @@ export default class extends BaseSchema {
       table.enum('period', ['morning', 'afternoon']).notNullable()
       table.string('open_time').notNullable()
       table.string('close_time').notNullable()
+      table.string('time_zone').defaultTo('Europe/Paris')
       table.timestamp('created_at')
       table.timestamp('updated_at')
     })

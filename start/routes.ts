@@ -50,6 +50,7 @@ router
 router.get('doctor/search', [UsersController, 'searchDoctor'])
 router.get('doctor/search/autocomplete', [UsersController, 'searchDoctorAutoComplete'])
 router.get('doctor/:id', [UsersController, 'showDoctor'])
+router.get('doctor/:id/available-slots', [UsersController, 'getAvailableSlots'])
 
 router
   .post('events', [EventsController, 'create'])

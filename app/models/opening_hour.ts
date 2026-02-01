@@ -1,4 +1,4 @@
-import { BaseModel, belongsTo, column, computed } from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 import User from './user.js'
 import { type BelongsTo } from '@adonisjs/lucid/types/relations'
@@ -27,15 +27,8 @@ export default class OpeningHour extends BaseModel {
   @column()
   declare closeTime: string // Format 'HH:MM:SS'
 
-  @computed()
-  get formattedOpenTime() {
-    return this.openTime ? this.openTime.split(':').slice(0, 2).join(':') : null
-  }
-
-  @computed()
-  get formattedCloseTime() {
-    return this.closeTime ? this.closeTime.split(':').slice(0, 2).join(':') : null
-  }
+  @column()
+  declare timeZone: string
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

@@ -6,6 +6,7 @@ const openingHourSchema = vine.object({
   openTime: vine.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   closeTime: vine.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   id: vine.number().optional(),
+  timeZone: vine.string(),
 })
 
 export const OpeningHourValidator = {
