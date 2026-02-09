@@ -6,6 +6,7 @@ import SubSpeciality from '#models/sub_speciality'
 import OpeningHour from '#models/opening_hour'
 import { UserValidator } from '../validators/user.js'
 import { OpeningHourValidator } from '../validators/opening_hour.js'
+import { ReasonValidator } from '../validators/reason.js'
 import R2Service from '#services/R2Service'
 import app from '@adonisjs/core/services/app'
 import sharp from 'sharp'
@@ -13,6 +14,7 @@ import * as fs from 'node:fs/promises'
 import { cuid } from '@adonisjs/core/helpers'
 import { Readable } from 'node:stream'
 import { DateTime } from 'luxon'
+import Reason from '#models/reasons'
 
 export default class UsersController {
   /**
@@ -165,17 +167,17 @@ export default class UsersController {
     }
 
     // Only allow users to update their own profile unless they're admins
-    if (user.id !== auth_user.id && auth_user.roleId !== 3) {
-      // 3 is ADMIN role
+    if (user.id !== auth_user.id && auth_user.roleId !== 4) {
+      // 4 is ADMIN role
       return response.forbidden({ error: 'Not authorized to update this user' })
     }
 
     const data = await request.validateUsing(UserValidator.update)
 
     if (data.coordinate) {
-      const { lat, lng } = data.coordinate
+      const { x, y } = data.coordinate
       // @ts-ignore - The point type expects a string in the format '(x,y)'
-      data.coordinate = `(${lng},${lat})`
+      data.coordinate = `(${y},${x})`
     }
     user.merge(data)
     await user.save()
@@ -237,26 +239,70 @@ export default class UsersController {
     return await OpeningHour.query().where('userId', user.id)
   }
 
-  /**
-   * Delete user
-   */
-  async destroy({ params, response, auth }: HttpContext) {
-    const auth_user = auth.user! as unknown as User
+  async getReasons({ params, response }: HttpContext) {
     const user = await User.find(params.id)
 
-    if (!user) {
+    if (!user || user.roleId !== 2) {
       return response.notFound({ error: 'User not found' })
     }
 
-    // Only allow users to delete their own account or admins
-    if (user.id !== auth_user.id && auth_user.roleId !== 3) {
-      // 3 is ADMIN role
-      return response.forbidden({ error: 'Not authorized to delete this user' })
+    let reasons = await Reason.query().where('userId', user.id)
+
+    return reasons
+  }
+
+  async addReasons({ auth, params, request, response }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    const user = await User.find(params.id)
+
+    if (!user || user.roleId === 1 || (user.roleId === 2 && user.id !== auth_user.id)) {
+      return response.notFound({ error: 'User not found' })
+    }
+    let data = await request.validateUsing(ReasonValidator.create)
+
+    const reasons = await Reason.query().where('userId', user.id)
+
+    let reasonsIds: (number | undefined)[] = []
+    if (data.reasons) {
+      reasonsIds = data.reasons
+        .filter((reason) => reason.id !== undefined)
+        .map((reason) => reason.id)
     }
 
-    await user.delete()
+    // on supprime les heures d'ouverture qui ne sont pas dans data
+    for (const reason of reasons) {
+      if (!reasonsIds.includes(reason.id)) {
+        await reason.delete()
+      }
+    }
 
-    return response.noContent()
+    if (data.reasons) {
+      // Create all opening hours in a transaction
+      for (const reason of data.reasons) {
+        if (reason.id) {
+          const existingReason = await Reason.find(reason.id)
+          if (existingReason) {
+            existingReason.merge({
+              name: reason.name,
+              duration: reason.duration,
+              color: reason.color,
+              type: reason.type,
+            })
+            await existingReason.save()
+          }
+        } else {
+          await Reason.create({
+            userId: user.id,
+            name: reason.name,
+            duration: reason.duration,
+            color: reason.color,
+            type: reason.type,
+          })
+        }
+      }
+    }
+
+    return await Reason.query().where('userId', user.id)
   }
 
   async searchPatient({ request }: HttpContext) {
@@ -338,6 +384,8 @@ export default class UsersController {
 
     const doctors = await User.query()
       .where('role_id', 2)
+      .where('active', true)
+      .where('visible', true)
       .whereILike('lastname', `%${data.q}%`)
       .select([
         'id',
@@ -366,17 +414,11 @@ export default class UsersController {
         UserValidator.searchDoctor
       )
 
-      console.log('Recherche de médecins avec les paramètres:', {
-        lat,
-        lng,
-        q,
-        address,
-        locale,
-      })
-
       // Construire la requête de base
       const query = User.query()
         .where('role_id', 2) // Filtre pour les médecins
+        .where('active', true)
+        .where('visible', true)
         .whereNotNull('coordinate')
         .whereRaw(
           `ST_DWithin(
@@ -394,13 +436,17 @@ export default class UsersController {
           subQuery
             .whereHas('speciality', (specialityQuery) => {
               specialityQuery.whereHas('translations', (translationQuery) => {
-                translationQuery.where('name', 'ilike', `%${q}%`).andWhere('locale', locale)
+                translationQuery
+                  .whereRaw('unaccent(lower(name)) ILIKE unaccent(lower(?))', [`%${q}%`])
+                  .andWhere('locale', locale)
               })
             })
             // OU recherche dans les sous-spécialités
             .orWhereHas('subSpecialities', (subSpecialityQuery) => {
               subSpecialityQuery.whereHas('translations', (translationQuery) => {
-                translationQuery.where('name', 'ilike', `%${q}%`).andWhere('locale', locale)
+                translationQuery
+                  .whereRaw('unaccent(lower(name)) ILIKE unaccent(lower(?))', [`%${q}%`])
+                  .andWhere('locale', locale)
               })
             })
         })
@@ -463,8 +509,7 @@ export default class UsersController {
     // 1. Récupérer le médecin avec ses horaires
     const doctor = await User.query().preload('openingHours').where('id', id).firstOrFail()
 
-    // if (doctor.roleId !== 2 || doctor.active === false) {
-    if (doctor.roleId !== 2) {
+    if (doctor.roleId !== 2 || doctor.active === false) {
       return response.unauthorized({ message: 'Unauthorized' })
     }
     const openingHours = doctor.openingHours
@@ -562,8 +607,6 @@ export default class UsersController {
           }
         }
 
-        console.log(range.timeZone)
-
         let currentSlot = currentDate.setZone(range.timeZone).set({
           hour: startHours,
           minute: startMinutes,
@@ -621,5 +664,49 @@ export default class UsersController {
     slot2: { start: DateTime; end: DateTime }
   ) {
     return slot1.start < slot2.end && slot1.end > slot2.start
+  }
+
+  async getUsersAdmin({ request }: HttpContext) {
+    const { role } = request.qs()
+
+    const doctors = await User.query()
+      .where('roleId', role)
+      .preload('speciality', (query) => {
+        query.preload('translations')
+      })
+      .preload('subSpecialitiesUsers', (query) => {
+        query.preload('subSpeciality', (subQuery) => {
+          subQuery.preload('translations')
+        })
+      })
+
+    return doctors
+  }
+
+  async addUserAdmin({ request }: HttpContext) {
+    let payload = await request.validateUsing(UserValidator.create)
+
+    if (payload.coordinate) {
+      const { x, y } = payload.coordinate
+      // @ts-ignore - The point type expects a string in the format '(x,y)'
+      payload.coordinate = `(${y},${x})`
+    }
+    const user = await User.create(payload)
+
+    return user
+  }
+
+  async updateUserAdmin({ request }: HttpContext) {
+    const { id } = request.params()
+    let payload = await request.validateUsing(UserValidator.update)
+
+    if (payload.coordinate) {
+      const { x, y } = payload.coordinate
+      // @ts-ignore - The point type expects a string in the format '(x,y)'
+      payload.coordinate = `(${y},${x})`
+    }
+    const user = await User.query().where('id', id).update(payload).first()
+
+    return user
   }
 }

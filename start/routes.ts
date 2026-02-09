@@ -24,9 +24,6 @@ router
   .put('/user/:id', [UsersController, 'update'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
 router
-  .delete('/user/:id', [UsersController, 'destroy'])
-  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
-router
   .post('/user/:id/upload', [UsersController, 'upload'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
 router.get('/user/:id/avatar/:avatar', [UsersController, 'getAvatar'])
@@ -36,6 +33,13 @@ router
 router
   .post('user/:id/opening-hours', [UsersController, 'addOpeningHour'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .get('user/:id/reasons', [UsersController, 'getReasons'])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+router
+  .post('user/:id/reasons', [UsersController, 'addReasons'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
 router
   .post('user/:id/sub-specialities', [SpecialitiesController, 'saveSubSpecialitiesUsers'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
@@ -65,4 +69,14 @@ router
 router.get('specialities', [SpecialitiesController, 'index'])
 router
   .post('specialities', [SpecialitiesController, 'create'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router
+  .get('admin/user', [UsersController, 'getUsersAdmin'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .post('admin/user', [UsersController, 'addUserAdmin'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .put('admin/user/:id', [UsersController, 'updateUserAdmin'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])

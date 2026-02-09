@@ -144,14 +144,14 @@ export default class SpecialitiesController {
     const auth_user = auth.user! as unknown as User
     const payload = await request.validateUsing(SpecialityValidator.addSubSpeciality)
 
-    payload.subSpecialities.forEach(async (subSpecialityId) => {
+    payload.subSpecialityId.forEach(async (subSpeciality) => {
       await SubSpecialitiesUsers.updateOrCreate(
         {
-          subSpecialityId,
+          subSpecialityId: subSpeciality,
           userId: auth_user.id,
         },
         {
-          subSpecialityId,
+          subSpecialityId: subSpeciality,
           userId: auth_user.id,
         }
       )
@@ -160,9 +160,12 @@ export default class SpecialitiesController {
     // delete sub specialities users not in payload
     await SubSpecialitiesUsers.query()
       .where('userId', auth_user.id)
-      .whereNotIn('subSpecialityId', payload.subSpecialities)
+      .whereNotIn('subSpecialityId', payload.subSpecialityId)
       .delete()
 
-    return
+    return await Speciality.query()
+      .preload('translations')
+      .preload('subSpecialities', (q) => q.preload('translations'))
+      .orderBy('position', 'asc')
   }
 }

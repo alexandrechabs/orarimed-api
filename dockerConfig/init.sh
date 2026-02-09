@@ -9,6 +9,7 @@ psql -U $POSTGRES_USER -d $DB_DATABASE -c "GRANT ALL ON SCHEMA public TO $DB_USE
 # Ajouter postgis dans la base concernée
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB_DATABASE" <<-EOSQL
   CREATE EXTENSION IF NOT EXISTS postgis;
+  CREATE EXTENSION IF NOT EXISTS unaccent;
 EOSQL
 
 echo "** Finished creating default DB and users"

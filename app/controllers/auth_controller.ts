@@ -14,7 +14,7 @@ export default class AuthController {
         password: data.password,
         firstname: data.firstname,
         lastname: data.lastname,
-        roleId: data.kind,
+        roleId: data.roleId,
         acceptTerms: data.acceptTerms,
       })
 

@@ -40,6 +40,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare active: boolean
 
   @column()
+  declare visible: boolean
+
+  @column()
   declare acceptTerms: boolean
 
   @column()

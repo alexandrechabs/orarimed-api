@@ -5,6 +5,7 @@ export const UserValidator = {
     vine.object({
       firstname: vine.string().trim().minLength(2).maxLength(50),
       lastname: vine.string().trim().minLength(2).maxLength(50),
+      phoneNumber: vine.string().trim().minLength(10).maxLength(15).optional(),
       email: vine
         .string()
         .trim()
@@ -14,8 +15,18 @@ export const UserValidator = {
           return !user
         }),
       password: vine.string().minLength(8).maxLength(32),
-      kind: vine.number(),
+      roleId: vine.number(),
       acceptTerms: vine.boolean(),
+      specialityId: vine.number().optional(),
+      address: vine.string().trim().optional(),
+      city: vine.string().trim().optional(),
+      country: vine.string().trim().optional(),
+      coordinate: vine
+        .object({
+          x: vine.number(),
+          y: vine.number(),
+        })
+        .optional(),
     })
   ),
 
@@ -32,10 +43,12 @@ export const UserValidator = {
       birthDate: vine.date().optional(),
       phoneNumber: vine.string().trim().optional(),
       specialityId: vine.number().optional(),
+      visible: vine.boolean().optional(),
+      active: vine.boolean().optional(),
       coordinate: vine
         .object({
-          lat: vine.number(),
-          lng: vine.number(),
+          x: vine.number(),
+          y: vine.number(),
         })
         .optional(),
     })
