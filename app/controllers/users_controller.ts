@@ -410,9 +410,7 @@ export default class UsersController {
   async searchDoctor({ request, response }: HttpContext) {
     try {
       // Récupérer et valider les paramètres de la requête
-      const { lat, lng, q, address, locale } = await request.validateUsing(
-        UserValidator.searchDoctor
-      )
+      const { lat, lng, q, locale } = await request.validateUsing(UserValidator.searchDoctor)
 
       // Construire la requête de base
       const query = User.query()
