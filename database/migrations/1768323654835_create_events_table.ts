@@ -30,6 +30,8 @@ export default class extends BaseSchema {
       table.string('start_time').nullable()
       table.string('end_time').nullable()
       table.boolean('is_recurring').defaultTo(false)
+      table.text('status').nullable()
+      table.timestamp('canceled_at').nullable()
 
       table.timestamp('created_at').notNullable()
       table.timestamp('updated_at').nullable()

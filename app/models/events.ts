@@ -7,8 +7,6 @@ import Contact from './contacts.js'
 export type eventId = Opaque<'eventId', string>
 
 export default class Event extends BaseModel {
-  // Spécifie la connexion à utiliser (définie dans config/database.ts)
-
   @column({ isPrimary: true })
   declare id: eventId
 
@@ -47,6 +45,12 @@ export default class Event extends BaseModel {
 
   @column()
   declare endRecur: DateTime | null
+
+  @column()
+  declare status: string
+
+  @column()
+  declare canceledAt: DateTime | null
 
   @column({
     prepare: (value: number[] | null) => {

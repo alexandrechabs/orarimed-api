@@ -10,6 +10,7 @@ import { type HasMany, type BelongsTo, type ManyToMany } from '@adonisjs/lucid/t
 import Speciality from './speciality.js'
 import SubSpeciality from './sub_speciality.js'
 import OpeningHour from './opening_hour.js'
+import CenterUser from './centers_users.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -122,4 +123,7 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @hasMany(() => OpeningHour)
   declare openingHours: HasMany<typeof OpeningHour>
+
+  @hasMany(() => CenterUser)
+  declare centerUsers: HasMany<typeof CenterUser>
 }

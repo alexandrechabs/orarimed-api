@@ -1,6 +1,8 @@
 import Contact from '#models/contacts'
 import Event from '#models/events'
+import Reason from '#models/reasons'
 import User from '#models/user'
+import DateSlotService from '#services/DateSlotService'
 import { EventValidator } from '#validators/event'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
@@ -21,6 +23,7 @@ interface EventData {
   practitionerId: string
   contactId?: number
   notes?: string
+  status?: string
   patient: {
     id?: number
     firstname: string
@@ -42,18 +45,32 @@ export default class EventsController {
       data = (await request.validateUsing(EventValidator.createAbsence)) as EventData
     }
 
+    if (auth_user.roleId === 1 || auth_user.id !== data.practitionerId) {
+      return response.unauthorized({ message: 'Unauthorized' })
+    }
+
     let contact
 
-    if (type === 'appointment' && !data.patient.id) {
-      // create contact and check if user exist
-      contact = await Contact.query()
-        .where('phoneNumber', data.patient.phoneNumber)
-        .andWhere('practitionerId', data.practitionerId)
-        .first()
+    if (type === 'appointment') {
+      // si client id est fourni
+      if (data.patient.id) {
+        contact = await Contact.query()
+          .where('id', data.patient.id)
+          .andWhere('practitionerId', data.practitionerId)
+          .first()
+      } else {
+        // si pas de client id fourni, recherche par numéro de téléphone
+        contact = await Contact.query()
+          .where('phoneNumber', data.patient.phoneNumber)
+          .andWhere('practitionerId', data.practitionerId)
+          .first()
+      }
+      // si contact non trouvé, créer un nouveau contact pour le médecin
       if (!contact) {
+        // on regarde si on peut trouver le user pour le lier au contact
         let user = await User.query().where('phoneNumber', data.patient.phoneNumber).first()
 
-        // create contact
+        // on créé le contact
         contact = await Contact.create({
           patientId: user?.id,
           practitionerId: data.practitionerId,
@@ -64,6 +81,7 @@ export default class EventsController {
         })
       }
     }
+
     if (auth_user.roleId === 2) {
       const eventData: Partial<InstanceType<typeof Event>> = {
         title: data.title,
@@ -81,6 +99,7 @@ export default class EventsController {
         daysOfWeek: data.daysOfWeek || null,
         allDay: data.allDay || false,
         color: data.color || 'hsl(var(--primary))',
+        status: 'created',
       }
 
       const event = await Event.create(eventData)
@@ -140,6 +159,8 @@ export default class EventsController {
     const auth_user = auth.user! as unknown as User
     const data = (await request.validateUsing(EventValidator.update)) as EventData
     const event = await Event.find(request.param('id'))
+    console.log(data)
+
     if (event && event.practitionerId === auth_user.id) {
       event.merge({
         title: data.title,
@@ -155,11 +176,127 @@ export default class EventsController {
         endTime: data.endTime || null,
         daysOfWeek: data.daysOfWeek || null,
         allDay: data.allDay || false,
+        status: data.status || 'created',
         color: data.color || 'hsl(var(--primary))',
       })
       await event.save()
-      return event
+      return await Event.query()
+        .where('id', request.param('id'))
+        .preload('patient', (query) => {
+          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+        })
+        .first()
     }
     return response.notFound({ message: 'Event not found' })
+  }
+
+  async createRdv({ auth, params, request }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    let doctorId = params.id
+    const data = await request.validateUsing(EventValidator.createRdv)
+
+    console.log(doctorId)
+    console.log(data)
+
+    const doctor = await User.query().preload('openingHours').where('id', params.id).firstOrFail()
+
+    if (!doctor || doctor.roleId !== 2 || doctor.active === false) {
+      return { valid: false }
+    }
+
+    const reason = await Reason.query()
+      .where('id', data.reasonId)
+      .andWhere('userId', doctor.id)
+      .first()
+
+    if (!reason) {
+      return { valid: false }
+    }
+
+    // check if slot is already available
+    const openingHours = doctor.openingHours
+    const startDate = DateTime.fromISO(data.slot.replace(' ', '+')).startOf('day')
+    const endDate = DateTime.fromISO(data.slot.replace(' ', '+')).endOf('day')
+
+    const events = await Event.query()
+      .where('practitionerId', doctor.id)
+      .andWhere((query) => {
+        // Événements non récurrents qui se trouvent dans la plage
+        query
+          .where('is_recurring', false)
+          .andWhere('start', '<=', endDate.toJSDate())
+          .andWhere('end', '>=', startDate.toJSDate())
+          // OU événements récurrents
+          .orWhere((subQuery) => {
+            subQuery
+              .where('is_recurring', true)
+              .where('start_recur', '<=', endDate.toJSDate())
+              .where('end_recur', '>=', startDate.toJSDate())
+          })
+      })
+
+    const slots = DateSlotService.calculateAvailableSlots({
+      openingHours,
+      events,
+      date: startDate,
+      slotDuration: reason.duration,
+      durationDays: 1,
+    })
+
+    if (slots.filter((s) => s.start === data.slot.replace(' ', '+')).length === 0) {
+      return { valid: false, message: 'Slot not available' }
+    }
+    let contact
+
+    // search contact
+    contact = await Contact.query().where('patientId', auth_user.id).first()
+
+    if (!contact) {
+      contact = await Contact.create({
+        patientId: auth_user.id,
+        practitionerId: doctorId,
+        firstname: auth_user.firstname,
+        lastname: auth_user.lastname,
+        email: auth_user.email,
+        phoneNumber: auth_user.phoneNumber,
+      })
+    }
+
+    // create rdv
+    let event = await Event.create({
+      title: reason.name,
+      type: 'appointment',
+      contactId: contact.id,
+      practitionerId: doctorId,
+      description: '',
+      notes: '',
+      start: DateTime.fromISO(data.slot.replace(' ', '+')),
+      end: DateTime.fromISO(data.slot.replace(' ', '+')).plus({ minutes: reason.duration }),
+      allDay: false,
+      color: reason.color,
+      status: 'created',
+    })
+
+    console.log(event)
+
+    return {
+      success: true,
+    }
+  }
+
+  async getEventsContact({ auth, params, response }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    if (auth_user.roleId !== 2) {
+      return response.unauthorized({ message: 'Unauthorized' })
+    }
+    const contact = await Contact.query()
+      .where('id', params.id)
+      .andWhere('practitionerId', auth_user.id)
+      .first()
+    if (!contact) {
+      return response.notFound({ message: 'Contact not found' })
+    }
+    const events = await Event.query().where('contactId', contact.id)
+    return events
   }
 }

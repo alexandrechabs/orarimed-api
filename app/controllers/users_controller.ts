@@ -15,6 +15,9 @@ import { cuid } from '@adonisjs/core/helpers'
 import { Readable } from 'node:stream'
 import { DateTime } from 'luxon'
 import Reason from '#models/reasons'
+import Contact from '#models/contacts'
+import DateSlotService from '#services/DateSlotService'
+import Center from '#models/centers'
 
 export default class UsersController {
   /**
@@ -47,13 +50,9 @@ export default class UsersController {
     const auth_user = auth.user! as User
     let user = await User.find(params.id)
 
-    if (!user || user.id !== auth_user.id) {
+    // Check if user exists and if the user is the same as the authenticated user for doctor (roleId = 2) or if user is admin (roleId = 4)
+    if (!user || (user.id !== auth_user.id && auth_user.roleId !== 4)) {
       return response.notFound({ error: 'User not found' })
-    }
-
-    // utile ou non ?
-    if (auth_user.roleId === 1) {
-      return response.forbidden({ error: 'Not authorized to upload files' })
     }
 
     const r2Service = new R2Service()
@@ -201,7 +200,7 @@ export default class UsersController {
     const auth_user = auth.user! as unknown as User
     const user = await User.find(params.id)
 
-    if (!user || user.roleId === 1 || (user.id !== auth_user.id && auth_user.roleId !== 3)) {
+    if (!user || user.roleId === 1 || (user.id !== auth_user.id && auth_user.roleId !== 4)) {
       return response.notFound({ error: 'User not found' })
     }
 
@@ -237,6 +236,18 @@ export default class UsersController {
     }
 
     return await OpeningHour.query().where('userId', user.id)
+  }
+
+  async getReasonsClient({ params, response }: HttpContext) {
+    const user = await User.find(params.id)
+
+    if (!user || user.roleId !== 2) {
+      return response.notFound({ error: 'User not found' })
+    }
+
+    let reasons = await Reason.query().where('userId', user.id).andWhere('type', 'appointment')
+
+    return reasons
   }
 
   async getReasons({ params, response }: HttpContext) {
@@ -305,15 +316,15 @@ export default class UsersController {
     return await Reason.query().where('userId', user.id)
   }
 
-  async searchPatient({ request }: HttpContext) {
+  async searchPatient({ auth, request }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
     const data = await request.validateUsing(UserValidator.search)
 
-    const user = await User.query()
-      .where('firstname', '=', data.firstName)
-      .andWhere('lastname', '=', data.lastName)
-      .andWhere('birthDate', '=', data.birthDate)
-      .select(['id', 'firstname', 'lastname', 'email', 'createdAt'])
-      .firstOrFail()
+    const user = await Contact.query()
+      .where('practitionerId', auth_user.id)
+      .andWhereRaw('unaccent(lower(lastname)) ILIKE unaccent(lower(?))', [`%${data.search}%`])
+      .select(['id', 'firstname', 'lastname', 'email', 'phoneNumber', 'createdAt'])
+      .limit(10)
 
     return user
   }
@@ -402,7 +413,17 @@ export default class UsersController {
       })
       .limit(10)
 
-    let result = { specialities, subSpecialities, doctors }
+    const centers = await Center.query()
+      .where('active', true)
+      .where('visible', true)
+      .whereILike('name', `%${data.q}%`)
+      .select(['id', 'name', 'city', 'specialityId', 'centerIdentifier', 'avatar', 'createdAt'])
+      .preload('speciality', (query) => {
+        query.preload('translations')
+      })
+      .limit(10)
+
+    let result = { specialities, subSpecialities, doctors, centers }
 
     return result
   }
@@ -502,7 +523,7 @@ export default class UsersController {
 
   async getAvailableSlots({ params, request, response }: HttpContext) {
     const { id } = params
-    const { date, duration = 30 } = request.qs() // durée en minutes
+    const { date, duration = 15 } = request.qs() // durée en minutes
 
     // 1. Récupérer le médecin avec ses horaires
     const doctor = await User.query().preload('openingHours').where('id', id).firstOrFail()
@@ -538,130 +559,76 @@ export default class UsersController {
       })
 
     // 3. Calculer les créneaux disponibles
-    const slots = this.calculateAvailableSlots({
+    const slots = DateSlotService.calculateAvailableSlots({
       openingHours,
       events,
       date: startDate,
       slotDuration: duration,
+      durationDays: 7,
     })
 
     return response.ok(slots)
   }
 
-  private calculateAvailableSlots({
-    openingHours,
-    events,
-    date,
-    slotDuration,
-  }: {
-    openingHours: any
-    events: Event[]
-    date: DateTime
-    slotDuration: number
-  }) {
-    const slots = []
-    const now = DateTime.now()
+  async checkValidSelection({ params, request }: HttpContext) {
+    const doctor = await User.query().preload('openingHours').where('id', params.id).firstOrFail()
+    const { reasonId, slot } = request.qs() // durée en minutes
 
-    // Boucler sur les 7 prochains jours
-    for (let day = 0; day < 7; day++) {
-      const currentDate = date.plus({ days: day })
-      const dayOfWeek = currentDate.weekday // 1 (lundi) à 7 (dimanche)
-      const dayOpeningHours = openingHours.filter(
-        (openingHour: any) => openingHour.dayOfWeek === dayOfWeek
-      )
+    console.log('reasonId', reasonId)
+    console.log('slot', slot)
 
-      if (!dayOpeningHours || !dayOpeningHours.length) {
-        continue // Passe au jour suivant si pas d'heures d'ouverture
-      }
-      const isToday = currentDate.hasSame(now, 'day')
-
-      // Pour chaque plage d'ouverture de la journée
-      for (const range of dayOpeningHours) {
-        let [startHours, startMinutes] = range.openTime.split(':').map(Number)
-        const [endHours, endMinutes] = range.closeTime.split(':').map(Number)
-
-        if (isToday) {
-          const currentHour = now.hour
-          const currentMinute = now.minute
-
-          // Si l'heure de début est passée, commencer au prochain créneau
-          if (
-            startHours < currentHour ||
-            (startHours === currentHour && startMinutes < currentMinute)
-          ) {
-            startMinutes = Math.ceil((currentMinute + 1) / 15) * 15 // Arrondir au quart d'heure supérieur
-
-            if (startMinutes >= 60) {
-              startHours += Math.floor(startMinutes / 60)
-              startMinutes = startMinutes % 60
-            }
-            startHours += currentHour - startHours
-
-            // Si on dépasse l'heure de fermeture, passer au jour suivant
-
-            if (startHours > endHours || (startHours === endHours && startMinutes >= endMinutes)) {
-              continue
-            }
-          }
-        }
-
-        let currentSlot = currentDate.setZone(range.timeZone).set({
-          hour: startHours,
-          minute: startMinutes,
-          second: 0,
-          millisecond: 0,
-        })
-
-        const endTime = currentDate.setZone(range.timeZone).set({
-          hour: endHours,
-          minute: endMinutes,
-          second: 0,
-          millisecond: 0,
-        })
-
-        // Vérifier chaque créneau de la durée spécifiée
-        while (currentSlot.plus({ minutes: slotDuration }) <= endTime) {
-          const slotEnd = currentSlot.plus({ minutes: slotDuration })
-          let isAvailable = true
-
-          // Vérifier les conflits avec les événements
-          for (const event of events) {
-            if (event.start && event.end) {
-              const eventStart = event.start
-              const eventEnd = event.end
-
-              if (
-                this.isSlotOverlapping(
-                  { start: currentSlot, end: slotEnd },
-                  { start: eventStart, end: eventEnd }
-                )
-              ) {
-                isAvailable = false
-                break
-              }
-            }
-          }
-
-          if (isAvailable) {
-            slots.push({
-              start: currentSlot.toISO(),
-              end: slotEnd.toISO(),
-            })
-          }
-
-          currentSlot = currentSlot.plus({ minutes: 15 }) // Pas de 15 minutes entre les créneaux
-        }
-      }
+    if (!doctor || doctor.roleId !== 2 || doctor.active === false) {
+      return { valid: false }
     }
 
-    return slots
+    const reason = await Reason.query().where('id', reasonId).andWhere('userId', doctor.id).first()
+
+    if (!reason) {
+      return { valid: false }
+    }
+    const openingHours = doctor.openingHours
+    const startDate = DateTime.fromISO(slot.replace(' ', '+')).startOf('day')
+    const endDate = DateTime.fromISO(slot.replace(' ', '+')).endOf('day')
+
+    console.log(startDate)
+    console.log(endDate)
+
+    const events = await Event.query()
+      .where('practitionerId', doctor.id)
+      .andWhere((query) => {
+        // Événements non récurrents qui se trouvent dans la plage
+        query
+          .where('is_recurring', false)
+          .andWhere('start', '<=', endDate.toJSDate())
+          .andWhere('end', '>=', startDate.toJSDate())
+          // OU événements récurrents
+          .orWhere((subQuery) => {
+            subQuery
+              .where('is_recurring', true)
+              .where('start_recur', '<=', endDate.toJSDate())
+              .where('end_recur', '>=', startDate.toJSDate())
+          })
+      })
+
+    const slots = DateSlotService.calculateAvailableSlots({
+      openingHours,
+      events,
+      date: startDate,
+      slotDuration: reason.duration,
+      durationDays: 1,
+    })
+
+    return {
+      valid: slots.filter((s) => s.start === slot.replace(' ', '+')).length === 1 ? true : false,
+    }
   }
 
-  private isSlotOverlapping(
-    slot1: { start: DateTime; end: DateTime },
-    slot2: { start: DateTime; end: DateTime }
-  ) {
-    return slot1.start < slot2.end && slot1.end > slot2.start
+  async getCenters({ params }: HttpContext) {
+    const centers = await Center.query().preload('centerUsers', (query) => {
+      query.where('userId', params.id)
+    })
+
+    return centers
   }
 
   async getUsersAdmin({ request }: HttpContext) {

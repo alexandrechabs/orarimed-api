@@ -192,6 +192,7 @@ export const EventValidator = {
       daysOfWeek: vine.array(vine.number().min(0).max(6)).optional(),
       startTime: timeFormat.optional(),
       endTime: timeFormat.optional(),
+      status: vine.string().optional(),
       patient: vine
         .object({
           id: vine.number().optional(),
@@ -201,6 +202,12 @@ export const EventValidator = {
           email: vine.string(),
         })
         .optional(),
+    })
+  ),
+  createRdv: vine.compile(
+    vine.object({
+      slot: vine.string(),
+      reasonId: vine.number(),
     })
   ),
 }

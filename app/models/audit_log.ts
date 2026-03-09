@@ -2,8 +2,6 @@ import { DateTime } from 'luxon'
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 
 export default class AuditLog extends BaseModel {
-  // Spécifie la connexion à utiliser (définie dans config/database.ts)
-
   @column({ isPrimary: true })
   declare id: number
 

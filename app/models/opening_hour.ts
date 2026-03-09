@@ -2,6 +2,7 @@ import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 import User from './user.js'
 import { type BelongsTo } from '@adonisjs/lucid/types/relations'
+import Center from './centers.js'
 
 export type PeriodType = 'morning' | 'afternoon'
 
@@ -10,7 +11,7 @@ export default class OpeningHour extends BaseModel {
   declare id: number
 
   @column()
-  declare centerId: number
+  declare centerId: string
 
   @column()
   declare userId: string
@@ -40,4 +41,9 @@ export default class OpeningHour extends BaseModel {
     foreignKey: 'userId',
   })
   declare user: BelongsTo<typeof User>
+
+  @belongsTo(() => Center, {
+    foreignKey: 'centerId',
+  })
+  declare center: BelongsTo<typeof Center>
 }
