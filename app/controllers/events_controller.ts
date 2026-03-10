@@ -1,5 +1,6 @@
 import Contact from '#models/contacts'
 import Event from '#models/events'
+import Notification from '#models/notifications'
 import Reason from '#models/reasons'
 import User from '#models/user'
 import DateSlotService from '#services/DateSlotService'
@@ -78,6 +79,7 @@ export default class EventsController {
           lastname: data.patient.lastname,
           email: data.patient.email,
           phoneNumber: data.patient.phoneNumber,
+          language: user ? user.language : auth_user.language,
         })
       }
     }
@@ -103,6 +105,20 @@ export default class EventsController {
       }
 
       const event = await Event.create(eventData)
+
+      if (type === 'appointment' && contact) {
+        // send mail and add notification
+        await Notification.create({
+          eventId: event.id,
+          contactId: contact.id,
+          type: 'appointment_confirmation',
+          channel: 'email',
+          recipient: contact.email!,
+          subject: 'Confirmation de rendez-vous',
+          content: 'Votre rendez-vous a été confirmé',
+          status: 'pending',
+        })
+      }
 
       return await Event.query()
         .where('id', event.id)
@@ -195,9 +211,6 @@ export default class EventsController {
     let doctorId = params.id
     const data = await request.validateUsing(EventValidator.createRdv)
 
-    console.log(doctorId)
-    console.log(data)
-
     const doctor = await User.query().preload('openingHours').where('id', params.id).firstOrFail()
 
     if (!doctor || doctor.roleId !== 2 || doctor.active === false) {
@@ -259,6 +272,7 @@ export default class EventsController {
         lastname: auth_user.lastname,
         email: auth_user.email,
         phoneNumber: auth_user.phoneNumber,
+        language: auth_user.language,
       })
     }
 
@@ -277,7 +291,17 @@ export default class EventsController {
       status: 'created',
     })
 
-    console.log(event)
+    // send mail and add notification
+    await Notification.create({
+      eventId: event.id,
+      contactId: contact.id,
+      type: 'appointment_confirmation',
+      channel: 'email',
+      recipient: contact.email!,
+      subject: 'Confirmation de rendez-vous',
+      content: 'Votre rendez-vous a été confirmé',
+      status: 'pending',
+    })
 
     return {
       success: true,
@@ -298,5 +322,21 @@ export default class EventsController {
     }
     const events = await Event.query().where('contactId', contact.id)
     return events
+  }
+
+  async getNotifications({ auth, params, response }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    const event = await Event.query().where('id', params.id).first()
+    if (!event) {
+      return { success: false, message: 'Event not found' }
+    }
+
+    // only admin or doctor who created the event can see notifications
+    if (auth_user.roleId !== 4 && auth_user.id !== event.practitionerId) {
+      return response.unauthorized({ message: 'Unauthorized' })
+    }
+
+    const notifications = await Notification.query().where('eventId', event.id)
+    return notifications
   }
 }

@@ -27,6 +27,7 @@ export const UserValidator = {
           y: vine.number(),
         })
         .optional(),
+      language: vine.string().trim(),
     })
   ),
 
@@ -51,6 +52,7 @@ export const UserValidator = {
           y: vine.number(),
         })
         .optional(),
+      language: vine.string().trim(),
     })
   ),
   search: vine.compile(

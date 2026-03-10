@@ -16,6 +16,7 @@ export default class AuthController {
         lastname: data.lastname,
         roleId: data.roleId,
         acceptTerms: data.acceptTerms,
+        language: data.language,
       })
 
       const token = await User.accessTokens.create(user)

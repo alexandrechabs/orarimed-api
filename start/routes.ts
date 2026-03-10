@@ -75,6 +75,10 @@ router
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
 router
+  .get('events/:id/notifications', [EventsController, 'getNotifications'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router
   .get('contact/:id/events', [EventsController, 'getEventsContact'])
   .use([middleware.auth(), middleware.role(['DOCTOR'])])
 

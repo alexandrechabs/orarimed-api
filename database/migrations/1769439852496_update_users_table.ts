@@ -18,6 +18,7 @@ export default class extends BaseSchema {
   async down() {
     this.schema.alterTable(this.tableName, (table) => {
       table.dropColumn('speciality_id')
+      table.dropColumn('doctor_identifier')
     })
   }
 }

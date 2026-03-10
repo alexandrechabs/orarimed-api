@@ -28,6 +28,9 @@ export default class Contact extends BaseModel {
   @column()
   declare birthDate: string | null
 
+  @column()
+  declare language: string
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
