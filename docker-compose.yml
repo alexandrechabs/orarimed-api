@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   postgres:
-    container_name: postgres_orari
     image: postgis/postgis:16-3.4-alpine
     environment:
       POSTGRES_USER: ${DB_USER_ADMIN}
@@ -24,10 +23,25 @@ services:
     networks:
       - orarimed-network
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_volume:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - orarimed-network
+
   adonis_app:
-    container_name: adonis_orari
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     build:
       context: .
@@ -45,10 +59,38 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - ./:/home/node/app
       - /home/node/app/node_modules
     command: sh -c "node ace migration:run || true && node ace serve --watch"
+    networks:
+      - orarimed-network
+
+  worker:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    build:
+      context: .
+      target: dev
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./:/home/node/app
+      - /home/node/app/node_modules
+    command: node ace jobs:listen
     networks:
       - orarimed-network
 
@@ -58,3 +100,4 @@ networks:
 
 volumes:
   postgres_volume:
+  redis_volume:

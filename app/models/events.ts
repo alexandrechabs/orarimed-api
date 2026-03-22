@@ -3,6 +3,7 @@ import { BaseModel, beforeSave, belongsTo, column } from '@adonisjs/lucid/orm'
 import { Opaque } from '@adonisjs/core/types/helpers'
 import { type BelongsTo } from '@adonisjs/lucid/types/relations'
 import Contact from './contacts.js'
+import User from './user.js'
 
 export type eventId = Opaque<'eventId', string>
 
@@ -95,6 +96,9 @@ export default class Event extends BaseModel {
 
   @belongsTo(() => Contact, { foreignKey: 'contactId' })
   declare patient: BelongsTo<typeof Contact>
+
+  @belongsTo(() => User, { foreignKey: 'practitionerId' })
+  declare practitioner: BelongsTo<typeof User>
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

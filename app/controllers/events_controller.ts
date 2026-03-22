@@ -1,9 +1,12 @@
+import { inject } from '@adonisjs/core'
 import Contact from '#models/contacts'
 import Event from '#models/events'
 import Notification from '#models/notifications'
 import Reason from '#models/reasons'
 import User from '#models/user'
 import DateSlotService from '#services/DateSlotService'
+import NotificationService from '#services/notification_service'
+import ReminderService from '#services/reminderService'
 import { EventValidator } from '#validators/event'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
@@ -34,7 +37,10 @@ interface EventData {
   }
 }
 
+@inject()
 export default class EventsController {
+  constructor(private reminderService: ReminderService) {}
+
   async create({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
 
@@ -107,17 +113,28 @@ export default class EventsController {
       const event = await Event.create(eventData)
 
       if (type === 'appointment' && contact) {
-        // send mail and add notification
-        await Notification.create({
+        // send mail and add notification via queue
+        const notificationService = new NotificationService()
+        await notificationService.createNotification({
           eventId: event.id,
           contactId: contact.id,
-          type: 'appointment_confirmation',
+          type: 'mail_appointment_confirmation',
           channel: 'email',
           recipient: contact.email!,
-          subject: 'Confirmation de rendez-vous',
-          content: 'Votre rendez-vous a été confirmé',
-          status: 'pending',
         })
+
+        if (event.start) {
+          // set reminder
+          await this.reminderService.scheduleReminderForEvent(
+            event.id + event.start.toFormat('yyyy-MM-dd-HH-mm') + '-24h',
+            event.id,
+            contact.id,
+            contact.email!,
+            event.start,
+            'mail_appointment_reminder',
+            'day_before'
+          )
+        }
       }
 
       return await Event.query()
@@ -135,6 +152,18 @@ export default class EventsController {
     const auth_user = auth.user! as unknown as User
     let start = request.input('start')
     let end = request.input('end')
+
+    // call job to send appointment reminder with delay
+    // await this.reminderService.scheduleReminderForEvent(
+    //   'coucou1-24h',
+    //   'f8bcb516-40ec-417c-bc06-0e99f35d0acd',
+    //   4,
+    //   'alexandrechabane72+3232@gmail.com',
+    //   DateTime.now().plus({ minutes: 1 }).plus({ hours: 24 }),
+    //   'mail_appointment_reminder'
+    // )
+
+    // await this.reminderService.cancelRemindersForEvent(event.id + event.start.toFormat('yyyy-MM-dd-HH-mm') + '-24h')
 
     if (start && end) {
       const startDate = DateTime.fromISO(start)
@@ -174,10 +203,90 @@ export default class EventsController {
   async update({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
     const data = (await request.validateUsing(EventValidator.update)) as EventData
-    const event = await Event.find(request.param('id'))
-    console.log(data)
+    const event = await Event.query().preload('patient').where('id', request.param('id')).first()
 
     if (event && event.practitionerId === auth_user.id) {
+      // Si la date de l'événement change, supprimer les reminders existants
+      const oldStart = event.start ? DateTime.fromJSDate(event.start as unknown as Date) : null
+      const newStart = data.start ? DateTime.fromJSDate(data.start as unknown as Date) : null
+
+      if (oldStart && newStart && !oldStart.hasSame(newStart, 'minute')) {
+        // send mail change start date
+
+        await this.reminderService.cancelRemindersForEvent(
+          event.id + oldStart.toFormat('yyyy-MM-dd-HH-mm') + '-24h'
+        )
+
+        // add new reminder
+        if (
+          newStart &&
+          data.status !== 'abortExcused' &&
+          data.status !== 'abort' &&
+          newStart > DateTime.now()
+        ) {
+          await this.reminderService.scheduleReminderForEvent(
+            event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-24h',
+            event.id,
+            event.contactId!,
+            event.patient!.email!,
+            newStart,
+            'mail_appointment_reminder',
+            'day_before'
+          )
+
+          // send mail update
+          await this.reminderService.scheduleReminderForEvent(
+            event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-update',
+            event.id,
+            event.contactId!,
+            event.patient!.email!,
+            DateTime.now().plus({ seconds: 10 }),
+            'mail_appointment_reschedule',
+            '',
+            {
+              oldStart: oldStart,
+            }
+          )
+        }
+      }
+
+      if (
+        event.status !== data.status &&
+        (data.status === 'abortExcused' || data.status === 'abort')
+      ) {
+        // annulation de remidner
+        await this.reminderService.cancelRemindersForEvent(event.id + '-24h')
+        console.log(`Cancelled reminders for event ${event.id} due to cancellation`)
+
+        // send mail abort Rdv if event is in the past
+        if (newStart && newStart > DateTime.now()) {
+          // send mail for client
+
+          await this.reminderService.scheduleReminderForEvent(
+            event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-cancel',
+            event.id,
+            event.contactId!,
+            event.patient!.email!,
+            DateTime.now().plus({ seconds: 10 }),
+            'mail_appointment_cancellation',
+            ''
+          )
+
+          if (auth_user.id !== event.practitionerId) {
+            // send mail to practitioner
+            await this.reminderService.scheduleReminderForEvent(
+              event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-cancel_doctor',
+              event.id,
+              event.contactId!,
+              event.patient!.email!,
+              DateTime.now().plus({ seconds: 10 }),
+              'mail_appointment_cancellation_doctor',
+              ''
+            )
+          }
+        }
+      }
+
       event.merge({
         title: data.title,
         contactId: data.contactId,
@@ -196,6 +305,7 @@ export default class EventsController {
         color: data.color || 'hsl(var(--primary))',
       })
       await event.save()
+
       return await Event.query()
         .where('id', request.param('id'))
         .preload('patient', (query) => {
@@ -291,16 +401,14 @@ export default class EventsController {
       status: 'created',
     })
 
-    // send mail and add notification
-    await Notification.create({
+    // send mail and add notification via queue
+    const notificationService = new NotificationService()
+    await notificationService.createNotification({
       eventId: event.id,
       contactId: contact.id,
-      type: 'appointment_confirmation',
+      type: 'mail_appointment_confirmation',
       channel: 'email',
       recipient: contact.email!,
-      subject: 'Confirmation de rendez-vous',
-      content: 'Votre rendez-vous a été confirmé',
-      status: 'pending',
     })
 
     return {

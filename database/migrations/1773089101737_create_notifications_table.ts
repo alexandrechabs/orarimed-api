@@ -16,11 +16,12 @@ export default class extends BaseSchema {
         .onDelete('CASCADE')
       table
         .enum('type', [
-          'appointment_reminder',
-          'appointment_cancellation',
-          'appointment_confirmation',
-          'appointment_reschedule',
-          'center_invitation',
+          'mail_appointment_reminder',
+          'mail_appointment_cancellation',
+          'mail_appointment_cancellation_doctor',
+          'mail_appointment_confirmation',
+          'mail_appointment_reschedule',
+          'mail_center_invitation',
         ])
         .notNullable()
       table.enum('channel', ['email', 'sms', 'push']).notNullable()
