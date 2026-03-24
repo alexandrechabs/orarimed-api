@@ -5,7 +5,6 @@ import Notification from '#models/notifications'
 import Reason from '#models/reasons'
 import User from '#models/user'
 import DateSlotService from '#services/DateSlotService'
-import NotificationService from '#services/notification_service'
 import ReminderService from '#services/reminderService'
 import { EventValidator } from '#validators/event'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -114,14 +113,15 @@ export default class EventsController {
 
       if (type === 'appointment' && contact) {
         // send mail and add notification via queue
-        const notificationService = new NotificationService()
-        await notificationService.createNotification({
-          eventId: event.id,
-          contactId: contact.id,
-          type: 'mail_appointment_confirmation',
-          channel: 'email',
-          recipient: contact.email!,
-        })
+        await this.reminderService.scheduleReminderForEvent(
+          event.id + event.start!.toFormat('yyyy-MM-dd-HH-mm') + '',
+          event.id,
+          contact.id,
+          contact.email!,
+          DateTime.now().plus({ seconds: 10 }),
+          'mail_appointment_confirmation',
+          ''
+        )
 
         if (event.start) {
           // set reminder
@@ -401,15 +401,15 @@ export default class EventsController {
       status: 'created',
     })
 
-    // send mail and add notification via queue
-    const notificationService = new NotificationService()
-    await notificationService.createNotification({
-      eventId: event.id,
-      contactId: contact.id,
-      type: 'mail_appointment_confirmation',
-      channel: 'email',
-      recipient: contact.email!,
-    })
+    await this.reminderService.scheduleReminderForEvent(
+      event.id + event.start!.toFormat('yyyy-MM-dd-HH-mm') + '',
+      event.id,
+      contact.id,
+      contact.email!,
+      DateTime.now().plus({ seconds: 10 }),
+      'mail_appointment_confirmation',
+      ''
+    )
 
     return {
       success: true,

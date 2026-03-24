@@ -22,6 +22,10 @@ export default class Notification extends BaseModel {
     | 'mail_appointment_confirmation'
     | 'mail_appointment_reschedule'
     | 'mail_center_invitation'
+    | 'mail_create_account'
+    | 'mail_create_account_doctor'
+    | 'mail_create_account_secretary'
+    | 'mail_password_forgot'
 
   @column()
   declare channel: 'email' | 'sms' | 'push'

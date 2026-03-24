@@ -2,9 +2,13 @@ import { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import User from '#models/user'
 import { UserValidator } from '#validators/user'
+import ReminderService from '#services/reminderService'
+import { DateTime } from 'luxon'
 
 @inject()
 export default class AuthController {
+  constructor(private reminderService: ReminderService) {}
+
   async register({ request, response }: HttpContext) {
     const data = await request.validateUsing(UserValidator.create)
 
@@ -18,6 +22,29 @@ export default class AuthController {
         acceptTerms: data.acceptTerms,
         language: data.language,
       })
+
+      // send mail create account
+      let mail_type: any = 'mail_create_account'
+      if (data.roleId === 2) {
+        mail_type = 'mail_create_account_doctor'
+      } else if (data.roleId === 3) {
+        mail_type = 'mail_create_account_secretary'
+      } else {
+        mail_type = 'mail_create_account'
+      }
+
+      await this.reminderService.scheduleReminderForEvent(
+        user.id,
+        '',
+        0,
+        user.email,
+        DateTime.now().plus({ seconds: 10 }),
+        mail_type,
+        '',
+        {
+          userId: user.id,
+        }
+      )
 
       const token = await User.accessTokens.create(user)
 

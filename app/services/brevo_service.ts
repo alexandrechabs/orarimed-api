@@ -1,8 +1,8 @@
 import { inject } from '@adonisjs/core'
-import { DateTime } from 'luxon'
 import Contact from '#models/contacts'
 import { format } from 'date-fns'
 import { fr, enUS, sq } from 'date-fns/locale'
+import User from '#models/user'
 
 export interface BrevoTemplateData {
   to: { email: string; name: string }[]
@@ -308,6 +308,75 @@ export default class BrevoService {
         CENTER_NAME: centerData.name,
         CENTER_ADDRESS: centerData.address,
         INVITATION_CODE: centerData.invitationCode,
+      },
+      language,
+    })
+  }
+
+  async sendNewAccount(user: User) {
+    const language = user.language || 'sq'
+
+    const templateIds = {
+      fr: 22, // Template ID pour l'invitation en français
+      en: 23, // Template ID pour l'invitation en anglais
+      sq: 24, // Template ID pour l'invitation en albanais
+    }
+
+    const templateId = templateIds[language as keyof typeof templateIds] || templateIds.fr
+
+    return this.sendTransactionalEmail({
+      to: [{ email: user.email, name: `${user.firstname} ${user.lastname}` }],
+      templateId,
+      params: {
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+      },
+      language,
+    })
+  }
+
+  async sendNewAccountDoctor(user: User) {
+    const language = user.language || 'sq'
+
+    const templateIds = {
+      fr: 25, // Template ID pour l'invitation en français
+      en: 26, // Template ID pour l'invitation en anglais
+      sq: 27, // Template ID pour l'invitation en albanais
+    }
+
+    const templateId = templateIds[language as keyof typeof templateIds] || templateIds.fr
+
+    return this.sendTransactionalEmail({
+      to: [{ email: user.email, name: `${user.firstname} ${user.lastname}` }],
+      templateId,
+      params: {
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+      },
+      language,
+    })
+  }
+
+  async sendNewAccountSecretary(user: User) {
+    const language = user.language || 'sq'
+
+    const templateIds = {
+      fr: 28, // Template ID pour l'invitation en français
+      en: 29, // Template ID pour l'invitation en anglais
+      sq: 30, // Template ID pour l'invitation en albanais
+    }
+
+    const templateId = templateIds[language as keyof typeof templateIds] || templateIds.fr
+
+    return this.sendTransactionalEmail({
+      to: [{ email: user.email, name: `${user.firstname} ${user.lastname}` }],
+      templateId,
+      params: {
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
       },
       language,
     })

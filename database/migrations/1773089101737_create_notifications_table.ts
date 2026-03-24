@@ -14,16 +14,7 @@ export default class extends BaseSchema {
         .inTable('contacts')
         .nullable()
         .onDelete('CASCADE')
-      table
-        .enum('type', [
-          'mail_appointment_reminder',
-          'mail_appointment_cancellation',
-          'mail_appointment_cancellation_doctor',
-          'mail_appointment_confirmation',
-          'mail_appointment_reschedule',
-          'mail_center_invitation',
-        ])
-        .notNullable()
+      table.string('type').notNullable()
       table.enum('channel', ['email', 'sms', 'push']).notNullable()
       table.string('recipient').notNullable() // email or phone number
       table.string('subject').nullable()

@@ -1,5 +1,6 @@
 import NotificationService from '#services/notification_service'
 import { Job } from 'adonisjs-jobs'
+import IORedis from 'ioredis'
 
 type SendAppointmentReminderPayload = {
   reminderId: string
@@ -14,6 +15,10 @@ type SendAppointmentReminderPayload = {
     | 'mail_appointment_cancellation_doctor'
     | 'mail_appointment_reschedule'
     | 'mail_center_invitation'
+    | 'mail_create_account'
+    | 'mail_create_account_doctor'
+    | 'mail_create_account_secretary'
+    | 'mail_password_forgot'
   extraData?: Record<string, any>
 }
 
@@ -21,12 +26,10 @@ export default class SendAppointmentReminder extends Job {
   async handle(payload: SendAppointmentReminderPayload) {
     const notificationService = new NotificationService()
     // Vérifier si le reminder a été annulé
-    const Redis = (await import('ioredis')).default
-    const redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: Number(process.env.REDIS_PORT) || 6379,
+    const redis = new (IORedis as any)({
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT),
     })
-
     const cancellationTime = await redis.get(`cancelled_reminders:${payload.reminderId}`)
 
     if (cancellationTime && Number(cancellationTime) > payload.createdAt) {
@@ -34,8 +37,6 @@ export default class SendAppointmentReminder extends Job {
       await redis.del(`cancelled_reminders:${payload.reminderId}`)
       return
     }
-
-    console.log('Processing reminder for appointment', payload)
 
     await notificationService.createNotification({
       eventId: payload.eventId,

@@ -1,25 +1,29 @@
 import { HttpContext } from '@adonisjs/core/http'
+import app from '@adonisjs/core/services/app'
+import { cuid } from '@adonisjs/core/helpers'
 import User from '#models/user'
 import Event from '#models/events'
 import Speciality from '#models/speciality'
 import SubSpeciality from '#models/sub_speciality'
 import OpeningHour from '#models/opening_hour'
+import Reason from '#models/reasons'
+import Contact from '#models/contacts'
+import Center from '#models/centers'
+import R2Service from '#services/R2Service'
+import DateSlotService from '#services/DateSlotService'
+import ReminderService from '#services/reminderService'
 import { UserValidator } from '../validators/user.js'
 import { OpeningHourValidator } from '../validators/opening_hour.js'
 import { ReasonValidator } from '../validators/reason.js'
-import R2Service from '#services/R2Service'
-import app from '@adonisjs/core/services/app'
 import sharp from 'sharp'
 import * as fs from 'node:fs/promises'
-import { cuid } from '@adonisjs/core/helpers'
 import { Readable } from 'node:stream'
 import { DateTime } from 'luxon'
-import Reason from '#models/reasons'
-import Contact from '#models/contacts'
-import DateSlotService from '#services/DateSlotService'
-import Center from '#models/centers'
+import { inject } from '@adonisjs/core'
 
+@inject()
 export default class UsersController {
+  constructor(private reminderService: ReminderService) {}
   /**
    * Get all users (paginated)
    */
@@ -657,6 +661,29 @@ export default class UsersController {
       payload.coordinate = `(${y},${x})`
     }
     const user = await User.create(payload)
+
+    // send mail create account
+    let mail_type: any = 'mail_create_account'
+    if (payload.roleId === 2) {
+      mail_type = 'mail_create_account_doctor'
+    } else if (payload.roleId === 3) {
+      mail_type = 'mail_create_account_secretary'
+    } else {
+      mail_type = 'mail_create_account'
+    }
+
+    await this.reminderService.scheduleReminderForEvent(
+      user.id,
+      '',
+      0,
+      user.email,
+      DateTime.now().plus({ seconds: 10 }),
+      mail_type,
+      '',
+      {
+        userId: user.id,
+      }
+    )
 
     return user
   }

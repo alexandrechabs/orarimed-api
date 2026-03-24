@@ -1,5 +1,6 @@
 import { inject } from '@adonisjs/core'
 import { DateTime } from 'luxon'
+import IORedis from 'ioredis'
 
 @inject()
 export default class ReminderService {
@@ -15,7 +16,11 @@ export default class ReminderService {
       | 'mail_appointment_cancellation'
       | 'mail_appointment_cancellation_doctor'
       | 'mail_appointment_reschedule'
-      | 'mail_center_invitation',
+      | 'mail_center_invitation'
+      | 'mail_create_account'
+      | 'mail_create_account_doctor'
+      | 'mail_create_account_secretary'
+      | 'mail_password_forgot',
     reminderDelay: string,
     extraData?: Record<string, any>
   ) {
@@ -64,12 +69,10 @@ export default class ReminderService {
   async cancelRemindersForEvent(eventId: string) {
     try {
       // Utiliser Redis pour marquer les reminders comme annulés avec un timestamp
-      const Redis = (await import('ioredis')).default
-      const redis = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: Number(process.env.REDIS_PORT) || 6379,
+      const redis = new (IORedis as any)({
+        host: process.env.REDIS_HOST,
+        port: Number(process.env.REDIS_PORT),
       })
-
       // Stocker le timestamp d'annulation (en millisecondes)
       const cancellationTime = Date.now().toString()
       await redis.set(`cancelled_reminders:${eventId}`, cancellationTime, 'EX', 86400) // 24h
