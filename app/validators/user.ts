@@ -58,6 +58,7 @@ export const UserValidator = {
   search: vine.compile(
     vine.object({
       search: vine.string().trim().minLength(2).maxLength(50),
+      userId: vine.string().optional(),
     })
   ),
   searchDoctorAutoComplete: vine.compile(
@@ -75,6 +76,11 @@ export const UserValidator = {
       lng: vine.string().transform(Number),
       locale: vine.string().trim(),
       q: vine.string().trim(),
+    })
+  ),
+  addSecretaryUsers: vine.compile(
+    vine.object({
+      doctors: vine.array(vine.string()),
     })
   ),
 }

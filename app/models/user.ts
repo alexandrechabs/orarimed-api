@@ -11,6 +11,7 @@ import Speciality from './speciality.js'
 import SubSpeciality from './sub_speciality.js'
 import OpeningHour from './opening_hour.js'
 import CenterUser from './centers_users.js'
+import SecretaryUser from './secretary_user.js'
 
 const AuthFinder = withAuthFinder(() => hash.use('scrypt'), {
   uids: ['email'],
@@ -129,4 +130,7 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @hasMany(() => CenterUser)
   declare centerUsers: HasMany<typeof CenterUser>
+
+  @hasMany(() => SecretaryUser, { foreignKey: 'secretaryId' })
+  declare secretaryUsers: HasMany<typeof SecretaryUser>
 }
