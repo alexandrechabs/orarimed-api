@@ -51,6 +51,6 @@ RUN npm install --only=production && npm install ts-node --omit=dev
 
 COPY --chown=node:node --from=build /home/node/app/build ./build
 COPY --chown=node:node --from=build /home/node/app/node_modules ./node_modules
-RUN node ace migration:run --force
+
 EXPOSE 3333
 CMD ["dumb-init", "node", "build/ace.js", "serve"]
