@@ -392,7 +392,8 @@ export default class UsersController {
     return user
   }
 
-  async searchDoctorAutoComplete({ request }: HttpContext) {
+  async searchDoctorAutoComplete({ auth, request }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
     // add validator
     const data = await request.validateUsing(UserValidator.searchDoctorAutoComplete)
     // retourner toutes les catégories ou la tranduction de la catégorie correspondant au mot recherché
@@ -411,10 +412,15 @@ export default class UsersController {
         query.where('locale', data.locale)
       })
 
-    const doctors = await User.query()
-      .where('role_id', 2)
-      .where('active', true)
-      .where('visible', true)
+    // don't filter active/visible for admin account
+    let doctorsQuery = User.query().where('role_id', 2).where('active', true)
+
+    // Only filter visible if not admin
+    if (!auth_user || auth_user.roleId !== 4) {
+      doctorsQuery = doctorsQuery.where('visible', true)
+    }
+
+    const doctors = await doctorsQuery
       .whereILike('lastname', `%${data.q}%`)
       .select([
         'id',
