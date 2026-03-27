@@ -392,8 +392,7 @@ export default class UsersController {
     return user
   }
 
-  async searchDoctorAutoComplete({ auth, request }: HttpContext) {
-    const auth_user = auth.user! as unknown as User
+  async searchDoctorAutoComplete({ request }: HttpContext) {
     // add validator
     const data = await request.validateUsing(UserValidator.searchDoctorAutoComplete)
     // retourner toutes les catégories ou la tranduction de la catégorie correspondant au mot recherché
@@ -412,15 +411,10 @@ export default class UsersController {
         query.where('locale', data.locale)
       })
 
-    // don't filter active/visible for admin account
-    let doctorsQuery = User.query().where('role_id', 2).where('active', true)
-
-    // Only filter visible if not admin
-    if (!auth_user || auth_user.roleId !== 4) {
-      doctorsQuery = doctorsQuery.where('visible', true)
-    }
-
-    const doctors = await doctorsQuery
+    const doctors = await User.query()
+      .where('role_id', 2)
+      .where('active', true)
+      .where('visible', true)
       .whereILike('lastname', `%${data.q}%`)
       .select([
         'id',
@@ -656,10 +650,14 @@ export default class UsersController {
   }
 
   async getUsersAdmin({ request }: HttpContext) {
-    const { role } = request.qs()
+    const { q, role } = request.qs()
 
-    const doctors = await User.query()
-      .where('roleId', role)
+    let doctorRequest = User.query().where('roleId', role)
+
+    if (q) {
+      doctorRequest.whereILike('lastname', `%${q}%`)
+    }
+    const doctors = await doctorRequest
       .preload('speciality', (query) => {
         query.preload('translations')
       })
