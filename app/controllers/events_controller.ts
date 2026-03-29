@@ -167,52 +167,63 @@ export default class EventsController {
     let end = request.input('end')
     let userId = request.input('userId')
 
-    if (userId && auth_user.roleId === 3) {
-      // TODO: check if user is secretary and has access to this user
-      let exist = await SecretaryUser.query()
-        .where('secretaryId', auth_user.id)
-        .where('doctorId', userId)
-        .first()
-      if (!exist) {
-        return response.unauthorized({ message: 'Unauthorized' })
-      }
+    if (auth_user.roleId === 1) {
+      let contacts = await Contact.query().where('patientId', auth_user.id)
+
+      let events = await Event.query().whereIn(
+        'contactId',
+        contacts.map((contact) => contact.id)
+      )
+
+      return events
     } else {
-      userId = auth_user.id
+      if (userId && auth_user.roleId === 3) {
+        // TODO: check if user is secretary and has access to this user
+        let exist = await SecretaryUser.query()
+          .where('secretaryId', auth_user.id)
+          .where('doctorId', userId)
+          .first()
+        if (!exist) {
+          return response.unauthorized({ message: 'Unauthorized' })
+        }
+      } else {
+        userId = auth_user.id
+      }
+
+      if (start && end) {
+        const startDate = DateTime.fromISO(start)
+        const endDate = DateTime.fromISO(end)
+        // retourne les events entre start et end
+
+        const events = await Event.query()
+          .preload('patient', (query) => {
+            query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+          })
+          .where('practitionerId', userId)
+          .andWhere((query) => {
+            // Événements non récurrents qui se trouvent dans la plage
+            query
+              .where('is_recurring', false)
+              .andWhere('start', '<=', endDate.toJSDate())
+              .andWhere('end', '>=', startDate.toJSDate())
+              // OU événements récurrents
+              .orWhere((subQuery) => {
+                subQuery
+                  .where('is_recurring', true)
+                  .where('start_recur', '<=', endDate.toJSDate())
+                  .where('end_recur', '>=', startDate.toJSDate())
+              })
+          })
+        return events
+      }
+
+      if (auth_user.roleId === 2) {
+        const events = await Event.query().where('practitionerId', userId)
+        return events
+      }
+
+      return response.unauthorized({ message: 'Unauthorized' })
     }
-
-    if (start && end) {
-      const startDate = DateTime.fromISO(start)
-      const endDate = DateTime.fromISO(end)
-      // retourne les events entre start et end
-
-      const events = await Event.query()
-        .preload('patient', (query) => {
-          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
-        })
-        .where('practitionerId', userId)
-        .andWhere((query) => {
-          // Événements non récurrents qui se trouvent dans la plage
-          query
-            .where('is_recurring', false)
-            .andWhere('start', '<=', endDate.toJSDate())
-            .andWhere('end', '>=', startDate.toJSDate())
-            // OU événements récurrents
-            .orWhere((subQuery) => {
-              subQuery
-                .where('is_recurring', true)
-                .where('start_recur', '<=', endDate.toJSDate())
-                .where('end_recur', '>=', startDate.toJSDate())
-            })
-        })
-      return events
-    }
-
-    if (auth_user.roleId === 2) {
-      const events = await Event.query().where('practitionerId', userId)
-      return events
-    }
-
-    return response.unauthorized({ message: 'Unauthorized' })
   }
 
   async update({ auth, request, response }: HttpContext) {
@@ -466,7 +477,7 @@ export default class EventsController {
     }
     if (auth_user.roleId === 2) {
       // Patient can only see their own events
-      if (contact.patientId !== auth_user.id) {
+      if (contact.practitionerId !== auth_user.id) {
         return response.unauthorized({ message: 'Unauthorized' })
       }
     }

@@ -86,7 +86,7 @@ export default class CentersController {
         })
         .preload('centerUsers', (query) => {
           query.preload('user', (query) => {
-            query.select(['id', 'firstname', 'lastname', 'avatar'])
+            query.select(['id', 'firstname', 'lastname', 'email', 'avatar'])
           })
         })
     } else {
