@@ -170,10 +170,28 @@ export default class EventsController {
     if (auth_user.roleId === 1) {
       let contacts = await Contact.query().where('patientId', auth_user.id)
 
-      let events = await Event.query().whereIn(
-        'contactId',
-        contacts.map((contact) => contact.id)
-      )
+      let events = await Event.query()
+        .whereIn(
+          'contactId',
+          contacts.map((contact) => contact.id)
+        )
+        .andWhere('end', '>=', DateTime.fromISO(start).toJSDate())
+        .preload('practitioner', (query) => {
+          query
+            .select([
+              'id',
+              'firstname',
+              'lastname',
+              'email',
+              'phoneNumber',
+              'avatar',
+              'specialityId',
+            ])
+            .preload('speciality', (specialityQuery) => {
+              specialityQuery.preload('translations')
+            })
+        })
+        .preload('patient')
 
       return events
     } else {
@@ -233,6 +251,15 @@ export default class EventsController {
 
     if (!event) {
       return response.notFound({ message: 'Event not found' })
+    }
+    if (auth_user.roleId === 1) {
+      let contact = await Contact.query()
+        .where('patientId', auth_user.id)
+        .where('id', event.contactId!)
+        .first()
+      if (!contact) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
     }
 
     if (auth_user.roleId === 2) {
@@ -328,24 +355,29 @@ export default class EventsController {
         )
       }
     }
-
-    event.merge({
-      title: data.title,
-      contactId: data.contactId,
-      practitionerId: data.practitionerId,
-      description: data.description,
-      notes: data?.notes,
-      start: data.start ? DateTime.fromJSDate(data.start) : null,
-      end: data.end ? DateTime.fromJSDate(data.end) : null,
-      startRecur: data.startRecur ? DateTime.fromJSDate(data.startRecur) : null,
-      endRecur: data.endRecur ? DateTime.fromJSDate(data.endRecur) : null,
-      startTime: data.startTime || null,
-      endTime: data.endTime || null,
-      daysOfWeek: data.daysOfWeek || null,
-      allDay: data.allDay || false,
-      status: data.status || 'created',
-      color: data.color || 'hsl(var(--primary))',
-    })
+    if (data.status) {
+      event.merge({
+        status: data.status,
+      })
+    }
+    if (auth_user.roleId !== 1) {
+      event.merge({
+        title: data.title,
+        contactId: data.contactId,
+        practitionerId: data.practitionerId,
+        description: data.description,
+        notes: data?.notes,
+        start: data.start ? DateTime.fromJSDate(data.start) : null,
+        end: data.end ? DateTime.fromJSDate(data.end) : null,
+        startRecur: data.startRecur ? DateTime.fromJSDate(data.startRecur) : null,
+        endRecur: data.endRecur ? DateTime.fromJSDate(data.endRecur) : null,
+        startTime: data.startTime || null,
+        endTime: data.endTime || null,
+        daysOfWeek: data.daysOfWeek || null,
+        allDay: data.allDay || false,
+        color: data.color || 'hsl(var(--primary))',
+      })
+    }
     await event.save()
 
     return await Event.query()

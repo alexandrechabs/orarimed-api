@@ -541,7 +541,7 @@ export default class UsersController {
 
   async getAvailableSlots({ params, request, response }: HttpContext) {
     const { id } = params
-    const { date, duration = 15 } = request.qs() // durée en minutes
+    const { date, duration = 15, durationDays = 7 } = request.qs() // durée en minutes
 
     // 1. Récupérer le médecin avec ses horaires
     const doctor = await User.query().preload('openingHours').where('id', id).firstOrFail()
@@ -582,7 +582,7 @@ export default class UsersController {
       events,
       date: startDate,
       slotDuration: duration,
-      durationDays: 7,
+      durationDays,
     })
 
     return response.ok(slots)

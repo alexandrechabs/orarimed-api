@@ -79,7 +79,7 @@ router
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .put('events/:id', [EventsController, 'update'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 
 router
   .get('events/:id/notifications', [EventsController, 'getNotifications'])

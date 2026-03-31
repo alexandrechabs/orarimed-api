@@ -92,6 +92,10 @@ export default class Event extends BaseModel {
     } else {
       event.isRecurring = false
     }
+
+    if (event.status === 'abortExcused') {
+      event.canceledAt = DateTime.now()
+    }
   }
 
   @belongsTo(() => Contact, { foreignKey: 'contactId' })
