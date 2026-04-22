@@ -20,20 +20,27 @@ export default class ReminderService {
       | 'mail_create_account'
       | 'mail_create_account_doctor'
       | 'mail_create_account_secretary'
-      | 'mail_password_forgot',
+      | 'mail_password_forgot'
+      | 'mail_email_verification',
     reminderDelay: string,
     extraData?: Record<string, any>
   ) {
     try {
       // Import dynamique pour éviter les erreurs de compilation
       const { default: SendAppointmentReminder } =
-        await import('../jobs/send_appointment_reminder.js')
+      await import('../jobs/send_appointment_reminder.js')
 
-      let reminderTime = eventStart
+      const timeZone = 'Europe/Paris'
+
+      let reminderTime = eventStart.setZone(timeZone)
       if (reminderType === 'mail_appointment_reminder') {
         if (reminderDelay === 'day_before') {
-          // la veille à 18h
-          reminderTime = eventStart.minus({ days: 1 }).set({ hour: 18, minute: 0, second: 0 })
+          // veille à 18h
+          reminderTime = eventStart
+            .setZone(timeZone)
+            .minus({ days: 1 })
+            .set({ hour: 10, minute: 0, second: 0, millisecond: 0 })
+            .toUTC()
         } else if (reminderDelay === 'hour_before') {
           reminderTime = eventStart.minus({ hours: 1 })
         }

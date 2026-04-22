@@ -381,4 +381,35 @@ export default class BrevoService {
       language,
     })
   }
+
+  async sendEmailVerification(user: User) {
+    const language = user.language || 'sq'
+
+    const templateIds = {
+      fr: 31, // Template ID pour la vérification en français
+      en: 32, // Template ID pour la vérification en anglais
+      sq: 33, // Template ID pour la vérification en albanais
+    }
+
+    const templateId = templateIds[language as keyof typeof templateIds] || templateIds.fr
+
+    console.log({
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
+      code: user.emailVerificationToken,
+    });
+
+    return this.sendTransactionalEmail({
+      to: [{ email: user.email, name: `${user.firstname} ${user.lastname}` }],
+      templateId,
+      params: {
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        code: user.emailVerificationToken,
+      },
+      language,
+    })
+  }
 }

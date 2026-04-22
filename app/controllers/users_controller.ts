@@ -660,7 +660,7 @@ export default class UsersController {
       // @ts-ignore - The point type expects a string in the format '(x,y)'
       payload.coordinate = `(${y},${x})`
     }
-    const user = await User.create(payload)
+    const user = await User.create({ ...payload, emailVerified: true })
 
     // send mail create account
     let mail_type: any = 'mail_create_account'

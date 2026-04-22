@@ -44,6 +44,15 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare visible: boolean
 
   @column()
+  declare emailVerified: boolean
+
+  @column()
+  declare emailVerificationToken: string | null
+
+  @column.dateTime()
+  declare emailVerificationExpires: DateTime | null
+
+  @column()
   declare acceptTerms: boolean
 
   @column()

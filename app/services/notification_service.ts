@@ -26,6 +26,8 @@ export default class NotificationService {
       | 'mail_create_account_doctor'
       | 'mail_create_account_secretary'
       | 'mail_password_forgot'
+      | 'mail_email_verification'
+
     channel: 'email' | 'sms' | 'push'
     recipient: string
     extraData?: Record<string, any>
@@ -172,6 +174,11 @@ export default class NotificationService {
           }
           break
         // case 'mail_password_forgot':
+        case 'mail_email_verification':
+          if (user) {
+            result = await this.brevoService.sendEmailVerification(user)
+          }
+          break
         default:
           throw new Error(`Unknown notification type: ${type}`)
       }

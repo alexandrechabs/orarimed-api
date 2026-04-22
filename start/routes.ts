@@ -14,6 +14,10 @@ router.get('/', async () => {
 
 router.post('/register', [AuthController, 'register']) // Ajout de la route d'inscription
 router.post('/login', [AuthController, 'login'])
+router.post('/verify-email', [AuthController, 'verifyEmail'])
+  .use([middleware.auth(), middleware.role(['USER'])])
+router.post('/resend-verification', [AuthController, 'resendVerificationEmail'])
+  .use([middleware.auth(), middleware.role(['USER'])])
 router
   .get('/user/', [UsersController, 'me'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
