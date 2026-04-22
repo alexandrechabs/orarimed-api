@@ -1,6 +1,5 @@
 services:
   postgres-prod:
-    container_name: postgres_orari
     image: postgis/postgis:16-3.4-alpine
     environment:
       POSTGRES_USER: ${DB_USER_ADMIN}
@@ -19,12 +18,31 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - orarimed-network
+
+  redis-prod:
+    image: redis:7-alpine
+    container_name: redis-prod
+    restart: always
+    ports:
+      - '6380:6379'
+    volumes:
+      - redis_volume:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - orarimed-network
 
   adonis_app-prod:
-    container_name: adonis_orari
     restart: always
     depends_on:
       postgres-prod:
+        condition: service_healthy
+      redis-prod:
         condition: service_healthy
     build:
       context: .
@@ -41,11 +59,46 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_DATABASE: ${DB_DATABASE}
+      REDIS_HOST: redis-prod
+      REDIS_PORT: 6379
     volumes:
       - adonis_app_data:/home/node/app/build/uploads
+    networks:
+      - orarimed-network
     command: >
       dumb-init sh -c "node build/ace.js migration:run --force && node build/ace.js serve"
 
+  worker-prod:
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    build:
+      context: .
+      target: production
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres-prod
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      REDIS_HOST: redis-prod
+      REDIS_PORT: 6379
+    volumes:
+      - ./:/home/node/app
+      - /home/node/app/node_modules
+    command: node ace jobs:listen
+    networks:
+      - orarimed-network
+
+networks:
+  orarimed-network:
+    driver: bridge
+
 volumes:
   postgres_volume:
+  redis_volume:
   adonis_app_data:

@@ -19,9 +19,9 @@ export default class SecretaryUser extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'secretaryId' })
   declare secretary: BelongsTo<typeof User>
 
-  @belongsTo(() => User)
+  @belongsTo(() => User, { foreignKey: 'doctorId' })
   declare doctor: BelongsTo<typeof User>
 }

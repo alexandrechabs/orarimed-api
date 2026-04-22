@@ -9,6 +9,7 @@ import ReminderService from '#services/reminderService'
 import { EventValidator } from '#validators/event'
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
+import SecretaryUser from '#models/secretary_user'
 
 interface EventData {
   title: string
@@ -51,8 +52,24 @@ export default class EventsController {
       data = (await request.validateUsing(EventValidator.createAbsence)) as EventData
     }
 
-    if (auth_user.roleId === 1 || auth_user.id !== data.practitionerId) {
+    if (!auth_user || auth_user.roleId === 1) {
       return response.unauthorized({ message: 'Unauthorized' })
+    }
+
+    if (auth_user.roleId === 2 && auth_user.id !== data.practitionerId) {
+      return response.unauthorized({ message: 'Unauthorized' })
+    }
+
+    if (auth_user.roleId !== 2) {
+      const secretary = await SecretaryUser.query()
+        .where('secretaryId', auth_user.id)
+        .where('doctorId', data.practitionerId)
+        .first()
+      console.log(secretary)
+
+      if (!secretary) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
     }
 
     let contact
@@ -89,115 +106,142 @@ export default class EventsController {
       }
     }
 
-    if (auth_user.roleId === 2) {
-      const eventData: Partial<InstanceType<typeof Event>> = {
-        title: data.title,
-        type: data.type,
-        contactId: contact?.id,
-        practitionerId: auth_user.id,
-        description: data.description,
-        notes: data?.notes,
-        start: data.start ? DateTime.fromJSDate(data.start) : null,
-        end: data.end ? DateTime.fromJSDate(data.end) : null,
-        startRecur: data.startRecur ? DateTime.fromJSDate(data.startRecur) : null,
-        endRecur: data.endRecur ? DateTime.fromJSDate(data.endRecur) : null,
-        startTime: data.startTime || null,
-        endTime: data.endTime || null,
-        daysOfWeek: data.daysOfWeek || null,
-        allDay: data.allDay || false,
-        color: data.color || 'hsl(var(--primary))',
-        status: 'created',
-      }
+    const eventData: Partial<InstanceType<typeof Event>> = {
+      title: data.title,
+      type: data.type,
+      contactId: contact?.id,
+      practitionerId: data.practitionerId,
+      description: data.description,
+      notes: data?.notes,
+      start: data.start ? DateTime.fromJSDate(data.start) : null,
+      end: data.end ? DateTime.fromJSDate(data.end) : null,
+      startRecur: data.startRecur ? DateTime.fromJSDate(data.startRecur) : null,
+      endRecur: data.endRecur ? DateTime.fromJSDate(data.endRecur) : null,
+      startTime: data.startTime || null,
+      endTime: data.endTime || null,
+      daysOfWeek: data.daysOfWeek || null,
+      allDay: data.allDay || false,
+      color: data.color || 'hsl(var(--primary))',
+      status: 'created',
+    }
 
-      const event = await Event.create(eventData)
+    const event = await Event.create(eventData)
 
-      if (type === 'appointment' && contact) {
-        // send mail and add notification via queue
+    if (type === 'appointment' && contact) {
+      // send mail and add notification via queue
+      await this.reminderService.scheduleReminderForEvent(
+        event.id + event.start!.toFormat('yyyy-MM-dd-HH-mm') + '',
+        event.id,
+        contact.id,
+        contact.email!,
+        DateTime.now().plus({ seconds: 10 }),
+        'mail_appointment_confirmation',
+        ''
+      )
+
+      if (event.start) {
+        // set reminder
         await this.reminderService.scheduleReminderForEvent(
-          event.id + event.start!.toFormat('yyyy-MM-dd-HH-mm') + '',
+          event.id + event.start.toFormat('yyyy-MM-dd-HH-mm') + '-24h',
           event.id,
           contact.id,
           contact.email!,
-          DateTime.now().plus({ seconds: 10 }),
-          'mail_appointment_confirmation',
-          ''
+          event.start,
+          'mail_appointment_reminder',
+          'day_before'
         )
-
-        if (event.start) {
-          // set reminder
-          await this.reminderService.scheduleReminderForEvent(
-            event.id + event.start.toFormat('yyyy-MM-dd-HH-mm') + '-24h',
-            event.id,
-            contact.id,
-            contact.email!,
-            event.start,
-            'mail_appointment_reminder',
-            'day_before'
-          )
-        }
       }
-
-      return await Event.query()
-        .where('id', event.id)
-        .preload('patient', (query) => {
-          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
-        })
-        .first()
     }
 
-    return response.unauthorized({ message: 'Unauthorized' })
+    return await Event.query()
+      .where('id', event.id)
+      .preload('patient', (query) => {
+        query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+      })
+      .first()
   }
 
   async index({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
     let start = request.input('start')
     let end = request.input('end')
+    let userId = request.input('userId')
 
-    // call job to send appointment reminder with delay
-    // await this.reminderService.scheduleReminderForEvent(
-    //   'coucou1-24h',
-    //   'f8bcb516-40ec-417c-bc06-0e99f35d0acd',
-    //   4,
-    //   'alexandrechabane72+3232@gmail.com',
-    //   DateTime.now().plus({ minutes: 1 }).plus({ hours: 24 }),
-    //   'mail_appointment_reminder'
-    // )
+    if (auth_user.roleId === 1) {
+      let contacts = await Contact.query().where('patientId', auth_user.id)
 
-    // await this.reminderService.cancelRemindersForEvent(event.id + event.start.toFormat('yyyy-MM-dd-HH-mm') + '-24h')
-
-    if (start && end) {
-      const startDate = DateTime.fromISO(start)
-      const endDate = DateTime.fromISO(end)
-      // retourne les events entre start et end
-
-      const events = await Event.query()
-        .preload('patient', (query) => {
-          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
-        })
-        .where('practitionerId', auth_user.id)
-        .andWhere((query) => {
-          // Événements non récurrents qui se trouvent dans la plage
+      let events = await Event.query()
+        .whereIn(
+          'contactId',
+          contacts.map((contact) => contact.id)
+        )
+        .andWhere('end', '>=', DateTime.fromISO(start).toJSDate())
+        .preload('practitioner', (query) => {
           query
-            .where('is_recurring', false)
-            .andWhere('start', '<=', endDate.toJSDate())
-            .andWhere('end', '>=', startDate.toJSDate())
-            // OU événements récurrents
-            .orWhere((subQuery) => {
-              subQuery
-                .where('is_recurring', true)
-                .where('start_recur', '<=', endDate.toJSDate())
-                .where('end_recur', '>=', startDate.toJSDate())
+            .select([
+              'id',
+              'firstname',
+              'lastname',
+              'email',
+              'phoneNumber',
+              'avatar',
+              'specialityId',
+            ])
+            .preload('speciality', (specialityQuery) => {
+              specialityQuery.preload('translations')
             })
         })
-      return events
-    }
+        .preload('patient')
 
-    if (auth_user.roleId === 2) {
-      const events = await Event.query().where('practitionerId', auth_user.id)
       return events
-    }
+    } else {
+      if (userId && auth_user.roleId === 3) {
+        // TODO: check if user is secretary and has access to this user
+        let exist = await SecretaryUser.query()
+          .where('secretaryId', auth_user.id)
+          .where('doctorId', userId)
+          .first()
+        if (!exist) {
+          return response.unauthorized({ message: 'Unauthorized' })
+        }
+      } else {
+        userId = auth_user.id
+      }
 
-    return response.unauthorized({ message: 'Unauthorized' })
+      if (start && end) {
+        const startDate = DateTime.fromISO(start)
+        const endDate = DateTime.fromISO(end)
+        // retourne les events entre start et end
+
+        const events = await Event.query()
+          .preload('patient', (query) => {
+            query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+          })
+          .where('practitionerId', userId)
+          .andWhere((query) => {
+            // Événements non récurrents qui se trouvent dans la plage
+            query
+              .where('is_recurring', false)
+              .andWhere('start', '<=', endDate.toJSDate())
+              .andWhere('end', '>=', startDate.toJSDate())
+              // OU événements récurrents
+              .orWhere((subQuery) => {
+                subQuery
+                  .where('is_recurring', true)
+                  .where('start_recur', '<=', endDate.toJSDate())
+                  .where('end_recur', '>=', startDate.toJSDate())
+              })
+          })
+        return events
+      }
+
+      if (auth_user.roleId === 2) {
+        const events = await Event.query().where('practitionerId', userId)
+        return events
+      }
+
+      return response.unauthorized({ message: 'Unauthorized' })
+    }
   }
 
   async update({ auth, request, response }: HttpContext) {
@@ -205,92 +249,122 @@ export default class EventsController {
     const data = (await request.validateUsing(EventValidator.update)) as EventData
     const event = await Event.query().preload('patient').where('id', request.param('id')).first()
 
-    if (event && event.practitionerId === auth_user.id) {
-      // Si la date de l'événement change, supprimer les reminders existants
-      const oldStart = event.start ? DateTime.fromJSDate(event.start as unknown as Date) : null
-      const newStart = data.start ? DateTime.fromJSDate(data.start as unknown as Date) : null
+    if (!event) {
+      return response.notFound({ message: 'Event not found' })
+    }
+    if (auth_user.roleId === 1) {
+      let contact = await Contact.query()
+        .where('patientId', auth_user.id)
+        .where('id', event.contactId!)
+        .first()
+      if (!contact) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
 
-      if (oldStart && newStart && !oldStart.hasSame(newStart, 'minute')) {
-        // send mail change start date
+    if (auth_user.roleId === 2) {
+      if (event.practitionerId !== auth_user.id) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+    if (auth_user.roleId === 3) {
+      // Secretary can update events for doctors they are associated with
+      const secretary = await SecretaryUser.query()
+        .where('secretaryId', auth_user.id)
+        .where('doctorId', event.practitionerId)
+        .first()
+      if (!secretary) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+    // Si la date de l'événement change, supprimer les reminders existants
+    const oldStart = event.start ? DateTime.fromJSDate(event.start as unknown as Date) : null
+    const newStart = data.start ? DateTime.fromJSDate(data.start as unknown as Date) : null
 
-        await this.reminderService.cancelRemindersForEvent(
-          event.id + oldStart.toFormat('yyyy-MM-dd-HH-mm') + '-24h'
+    if (oldStart && newStart && !oldStart.hasSame(newStart, 'minute')) {
+      // send mail change start date
+
+      await this.reminderService.cancelRemindersForEvent(
+        event.id + oldStart.toFormat('yyyy-MM-dd-HH-mm') + '-24h'
+      )
+
+      // add new reminder
+      if (
+        newStart &&
+        data.status !== 'abortExcused' &&
+        data.status !== 'abort' &&
+        newStart > DateTime.now()
+      ) {
+        await this.reminderService.scheduleReminderForEvent(
+          event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-24h',
+          event.id,
+          event.contactId!,
+          event.patient!.email!,
+          newStart,
+          'mail_appointment_reminder',
+          'day_before'
         )
 
-        // add new reminder
-        if (
-          newStart &&
-          data.status !== 'abortExcused' &&
-          data.status !== 'abort' &&
-          newStart > DateTime.now()
-        ) {
-          await this.reminderService.scheduleReminderForEvent(
-            event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-24h',
-            event.id,
-            event.contactId!,
-            event.patient!.email!,
-            newStart,
-            'mail_appointment_reminder',
-            'day_before'
-          )
-
-          // send mail update
-          await this.reminderService.scheduleReminderForEvent(
-            event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-update',
-            event.id,
-            event.contactId!,
-            event.patient!.email!,
-            DateTime.now().plus({ seconds: 10 }),
-            'mail_appointment_reschedule',
-            '',
-            {
-              oldStart: oldStart,
-            }
-          )
-        }
-      }
-
-      if (
-        event.status !== data.status &&
-        (data.status === 'abortExcused' || data.status === 'abort')
-      ) {
-        // annulation de remidner
-        await this.reminderService.cancelRemindersForEvent(event.id + '-24h')
-        console.log(`Cancelled reminders for event ${event.id} due to cancellation`)
-
-        // send mail abort Rdv if event is in the past
-        if (newStart && newStart > DateTime.now()) {
-          // send mail for client
-
-          await this.reminderService.scheduleReminderForEvent(
-            event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-cancel',
-            event.id,
-            event.contactId!,
-            event.patient!.email!,
-            DateTime.now().plus({ seconds: 10 }),
-            'mail_appointment_cancellation',
-            ''
-          )
-
-          if (auth_user.id !== event.practitionerId) {
-            // send mail to practitioner
-            await this.reminderService.scheduleReminderForEvent(
-              event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-cancel_doctor',
-              event.id,
-              event.contactId!,
-              event.patient!.email!,
-              DateTime.now().plus({ seconds: 10 }),
-              'mail_appointment_cancellation_doctor',
-              ''
-            )
+        // send mail update
+        await this.reminderService.scheduleReminderForEvent(
+          event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-update',
+          event.id,
+          event.contactId!,
+          event.patient!.email!,
+          DateTime.now().plus({ seconds: 10 }),
+          'mail_appointment_reschedule',
+          '',
+          {
+            oldStart: oldStart,
           }
-        }
+        )
       }
+    }
 
+    if (
+      event.status !== data.status &&
+      (data.status === 'abortExcused' || data.status === 'abort')
+    ) {
+      // annulation de remidner
+      await this.reminderService.cancelRemindersForEvent(event.id + '-24h')
+      console.log(`Cancelled reminders for event ${event.id} due to cancellation`)
+
+      // send mail abort Rdv if event is in the past
+      if (newStart && newStart > DateTime.now()) {
+        // send mail for client
+
+        await this.reminderService.scheduleReminderForEvent(
+          event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-cancel',
+          event.id,
+          event.contactId!,
+          event.patient!.email!,
+          DateTime.now().plus({ seconds: 10 }),
+          'mail_appointment_cancellation',
+          ''
+        )
+
+        // send mail to practitioner
+        await this.reminderService.scheduleReminderForEvent(
+          event.id + newStart.toFormat('yyyy-MM-dd-HH-mm') + '-cancel_doctor',
+          event.id,
+          event.contactId!,
+          event.patient!.email!,
+          DateTime.now().plus({ seconds: 10 }),
+          'mail_appointment_cancellation_doctor',
+          ''
+        )
+      }
+    }
+    if (data.status) {
+      event.merge({
+        status: data.status,
+      })
+    }
+    if (auth_user.roleId !== 1) {
       event.merge({
         title: data.title,
         contactId: data.contactId,
-        practitionerId: auth_user.id,
+        practitionerId: data.practitionerId,
         description: data.description,
         notes: data?.notes,
         start: data.start ? DateTime.fromJSDate(data.start) : null,
@@ -301,19 +375,17 @@ export default class EventsController {
         endTime: data.endTime || null,
         daysOfWeek: data.daysOfWeek || null,
         allDay: data.allDay || false,
-        status: data.status || 'created',
         color: data.color || 'hsl(var(--primary))',
       })
-      await event.save()
-
-      return await Event.query()
-        .where('id', request.param('id'))
-        .preload('patient', (query) => {
-          query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
-        })
-        .first()
     }
-    return response.notFound({ message: 'Event not found' })
+    await event.save()
+
+    return await Event.query()
+      .where('id', request.param('id'))
+      .preload('patient', (query) => {
+        query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+      })
+      .first()
   }
 
   async createRdv({ auth, params, request }: HttpContext) {
@@ -418,16 +490,30 @@ export default class EventsController {
 
   async getEventsContact({ auth, params, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
-    if (auth_user.roleId !== 2) {
+    if (auth_user.roleId !== 2 && auth_user.roleId !== 3) {
       return response.unauthorized({ message: 'Unauthorized' })
     }
-    const contact = await Contact.query()
-      .where('id', params.id)
-      .andWhere('practitionerId', auth_user.id)
-      .first()
+    const contact = await Contact.query().where('id', params.id).first()
     if (!contact) {
       return response.notFound({ message: 'Contact not found' })
     }
+
+    if (auth_user.roleId === 3) {
+      const secretary = await SecretaryUser.query()
+        .where('secretaryId', auth_user.id)
+        .where('doctorId', contact.practitionerId)
+        .first()
+      if (!secretary) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+    if (auth_user.roleId === 2) {
+      // Patient can only see their own events
+      if (contact.practitionerId !== auth_user.id) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+
     const events = await Event.query().where('contactId', contact.id)
     return events
   }
@@ -440,8 +526,18 @@ export default class EventsController {
     }
 
     // only admin or doctor who created the event can see notifications
-    if (auth_user.roleId !== 4 && auth_user.id !== event.practitionerId) {
+    if (auth_user.roleId === 2 && auth_user.id !== event.practitionerId) {
       return response.unauthorized({ message: 'Unauthorized' })
+    }
+    if (auth_user.roleId === 3) {
+      // Secretary can see notifications for events they are associated with
+      const secretary = await SecretaryUser.query()
+        .where('secretaryId', auth_user.id)
+        .where('doctorId', event.practitionerId)
+        .first()
+      if (!secretary) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
     }
 
     const notifications = await Notification.query().where('eventId', event.id)

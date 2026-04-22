@@ -20,17 +20,17 @@ router.post('/resend-verification', [AuthController, 'resendVerificationEmail'])
   .use([middleware.auth(), middleware.role(['USER'])])
 router
   .get('/user/', [UsersController, 'me'])
-  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 
 router
   .get('/user/:id', [UsersController, 'show'])
-  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .put('/user/:id', [UsersController, 'update'])
-  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .post('/user/:id/upload', [UsersController, 'upload'])
-  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 router.get('/user/:id/avatar/:avatar', [UsersController, 'getAvatar'])
 router.get('user/:id/opening-hours', [UsersController, 'getOpeningHours'])
 router
@@ -49,10 +49,10 @@ router
 
 router
   .get('patients/search', [UsersController, 'searchPatient'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .get('patients/:id', [UsersController, 'showPatient'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
 
 router.get('doctor/search', [UsersController, 'searchDoctor'])
 router.get('doctor/search/autocomplete', [UsersController, 'searchDoctorAutoComplete'])
@@ -65,26 +65,33 @@ router
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
 router
+  .get('/secretary/:id/doctors', [UsersController, 'getSecretaryDoctors'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
+router
+  .post('/secretary/:id/doctors', [UsersController, 'addSecretaryDoctors'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
+
+router
   .post('events', [EventsController, 'create'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .post('doctor/:id/events', [EventsController, 'createRdv'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'ADMIN'])])
 
 router
   .get('events', [EventsController, 'index'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .put('events/:id', [EventsController, 'update'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 
 router
   .get('events/:id/notifications', [EventsController, 'getNotifications'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY'])])
 
 router
   .get('contact/:id/events', [EventsController, 'getEventsContact'])
-  .use([middleware.auth(), middleware.role(['DOCTOR'])])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY'])])
 
 router.get('specialities', [SpecialitiesController, 'index'])
 router

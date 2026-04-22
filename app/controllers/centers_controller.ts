@@ -80,11 +80,15 @@ export default class CentersController {
       return response.unauthorized({ message: 'Unauthorized' })
     }
     if (auth_user.roleId === 4) {
-      return Center.query().preload('centerUsers', (query) => {
-        query.preload('user', (query) => {
-          query.select(['id', 'firstname', 'lastname', 'avatar'])
+      return Center.query()
+        .preload('speciality', (query) => {
+          query.preload('translations')
         })
-      })
+        .preload('centerUsers', (query) => {
+          query.preload('user', (query) => {
+            query.select(['id', 'firstname', 'lastname', 'email', 'avatar'])
+          })
+        })
     } else {
       return Center.query()
         .preload('speciality', (query) => {

@@ -20,6 +20,7 @@ import * as fs from 'node:fs/promises'
 import { Readable } from 'node:stream'
 import { DateTime } from 'luxon'
 import { inject } from '@adonisjs/core'
+import SecretaryUser from '#models/secretary_user'
 
 @inject()
 export default class UsersController {
@@ -245,7 +246,7 @@ export default class UsersController {
   async getReasonsClient({ params, response }: HttpContext) {
     const user = await User.find(params.id)
 
-    if (!user || user.roleId !== 2) {
+    if (!user) {
       return response.notFound({ error: 'User not found' })
     }
 
@@ -320,12 +321,25 @@ export default class UsersController {
     return await Reason.query().where('userId', user.id)
   }
 
-  async searchPatient({ auth, request }: HttpContext) {
+  async searchPatient({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
     const data = await request.validateUsing(UserValidator.search)
 
+    if (data.userId && auth_user.roleId === 3) {
+      // TODO: check if user is secretary and has access to this user
+      let exist = await SecretaryUser.query()
+        .where('secretaryId', auth_user.id)
+        .where('doctorId', data.userId)
+        .first()
+      if (!exist) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    } else {
+      data.userId = auth_user.id
+    }
+
     const user = await Contact.query()
-      .where('practitionerId', auth_user.id)
+      .where('practitionerId', data.userId)
       .andWhereRaw('unaccent(lower(lastname)) ILIKE unaccent(lower(?))', [`%${data.search}%`])
       .select(['id', 'firstname', 'lastname', 'email', 'phoneNumber', 'createdAt'])
       .limit(10)
@@ -527,7 +541,7 @@ export default class UsersController {
 
   async getAvailableSlots({ params, request, response }: HttpContext) {
     const { id } = params
-    const { date, duration = 15 } = request.qs() // durée en minutes
+    const { date, duration = 15, durationDays = 7 } = request.qs() // durée en minutes
 
     // 1. Récupérer le médecin avec ses horaires
     const doctor = await User.query().preload('openingHours').where('id', id).firstOrFail()
@@ -568,7 +582,7 @@ export default class UsersController {
       events,
       date: startDate,
       slotDuration: duration,
-      durationDays: 7,
+      durationDays,
     })
 
     return response.ok(slots)
@@ -636,10 +650,14 @@ export default class UsersController {
   }
 
   async getUsersAdmin({ request }: HttpContext) {
-    const { role } = request.qs()
+    const { q, role } = request.qs()
 
-    const doctors = await User.query()
-      .where('roleId', role)
+    let doctorRequest = User.query().where('roleId', role)
+
+    if (q) {
+      doctorRequest.whereILike('lastname', `%${q}%`)
+    }
+    const doctors = await doctorRequest
       .preload('speciality', (query) => {
         query.preload('translations')
       })
@@ -700,5 +718,107 @@ export default class UsersController {
     const user = await User.query().where('id', id).update(payload).first()
 
     return user
+  }
+
+  async getSecretaryDoctors({ params }: HttpContext) {
+    const users = await SecretaryUser.query()
+      .where('secretaryId', params.id)
+      .preload('doctor', (query) => {
+        query
+          .preload('speciality', (query) => {
+            query.preload('translations')
+          })
+          .select(
+            'id',
+            'firstname',
+            'lastname',
+            'email',
+            'avatar',
+            'createdAt',
+            'specialityId',
+            'phoneNumber',
+            'city',
+            'bio',
+            'address'
+          )
+      })
+
+    return users.map((cu) => {
+      const user = cu.doctor
+
+      return {
+        ...user.serialize(),
+      }
+    })
+  }
+
+  async addSecretaryDoctors({ auth, params, request, response }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    const secretary = await User.query()
+      .where('id', params.id)
+      .preload('secretaryUsers')
+      .firstOrFail()
+
+    // get list of usersIds
+    let userIds: string[] = []
+    secretary.secretaryUsers.forEach((su) => {
+      userIds.push(su.doctorId)
+    })
+
+    if (!auth_user || auth_user.roleId === 1 || auth_user.roleId !== 4 || secretary.roleId !== 3) {
+      return response.notFound({ error: 'User not found' })
+    }
+
+    const data = await request.validateUsing(UserValidator.addSecretaryUsers)
+
+    // delete centerUsers in userIds and not in data.doctorIds
+    for (const userId of userIds) {
+      if (!data.doctors.includes(userId)) {
+        await SecretaryUser.query()
+          .where('secretaryId', secretary.id)
+          .where('doctorId', userId)
+          .delete()
+      }
+    }
+
+    // add centerUsers in data.doctorIds and not in userIds
+    for (const userId of data.doctors) {
+      if (!userIds.includes(userId)) {
+        await SecretaryUser.create({
+          secretaryId: secretary.id,
+          doctorId: userId,
+        })
+      }
+    }
+
+    const users = await SecretaryUser.query()
+      .where('secretaryId', params.id)
+      .preload('doctor', (query) => {
+        query
+          .preload('speciality', (query) => {
+            query.preload('translations')
+          })
+          .select(
+            'id',
+            'firstname',
+            'lastname',
+            'email',
+            'avatar',
+            'createdAt',
+            'specialityId',
+            'phoneNumber',
+            'city',
+            'bio',
+            'address'
+          )
+      })
+
+    return users.map((cu) => {
+      const user = cu.doctor
+
+      return {
+        ...user.serialize(),
+      }
+    })
   }
 }
