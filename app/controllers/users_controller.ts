@@ -387,6 +387,13 @@ export default class UsersController {
         query.preload('translations')
       })
       .preload('openingHours')
+      .preload('centerUsers', (query) => {
+        query.preload('center', (query) => {
+          query.preload('speciality', (query) => {
+            query.preload('translations')
+          })
+        })
+      })
       .firstOrFail()
 
     return user
