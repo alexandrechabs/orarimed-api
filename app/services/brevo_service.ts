@@ -269,13 +269,13 @@ export default class BrevoService {
         }),
         old_date: oldDate
           ? format(oldDate, 'PPPP', {
-              locale: this.returnLocale(language),
-            })
+            locale: this.returnLocale(language),
+          })
           : '',
         old_time: oldDate
           ? format(oldDate, 'p', {
-              locale: this.returnLocale(language),
-            })
+            locale: this.returnLocale(language),
+          })
           : '',
         title_time: format(eventData.start, 'PPPPp', {
           locale: this.returnLocale(language),
@@ -393,13 +393,6 @@ export default class BrevoService {
 
     const templateId = templateIds[language as keyof typeof templateIds] || templateIds.fr
 
-    console.log({
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email,
-      code: user.emailVerificationToken,
-    });
-
     return this.sendTransactionalEmail({
       to: [{ email: user.email, name: `${user.firstname} ${user.lastname}` }],
       templateId,
@@ -408,6 +401,30 @@ export default class BrevoService {
         lastname: user.lastname,
         email: user.email,
         code: user.emailVerificationToken,
+      },
+      language,
+    })
+  }
+
+  async sendResetPassword(user: User, resetToken: string) {
+    const language = user.language || 'sq'
+
+    const templateIds = {
+      fr: 13, // Template ID pour la réinitialisation du mot de passe en français
+      en: 14, // Template ID pour la réinitialisation du mot de passe en anglais
+      sq: 15, // Template ID pour la réinitialisation du mot de passe en albanais
+    }
+
+    const templateId = templateIds[language as keyof typeof templateIds] || templateIds.fr
+
+    return this.sendTransactionalEmail({
+      to: [{ email: user.email, name: `${user.firstname} ${user.lastname}` }],
+      templateId,
+      params: {
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        code: resetToken,
       },
       language,
     })

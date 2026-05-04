@@ -9,17 +9,17 @@ type SendAppointmentReminderPayload = {
   contactEmail: string
   createdAt: number // Timestamp de création du job
   type:
-    | 'mail_appointment_confirmation'
-    | 'mail_appointment_reminder'
-    | 'mail_appointment_cancellation'
-    | 'mail_appointment_cancellation_doctor'
-    | 'mail_appointment_reschedule'
-    | 'mail_center_invitation'
-    | 'mail_create_account'
-    | 'mail_create_account_doctor'
-    | 'mail_create_account_secretary'
-    | 'mail_password_forgot'
-    | 'mail_email_verification'
+  | 'mail_appointment_confirmation'
+  | 'mail_appointment_reminder'
+  | 'mail_appointment_cancellation'
+  | 'mail_appointment_cancellation_doctor'
+  | 'mail_appointment_reschedule'
+  | 'mail_center_invitation'
+  | 'mail_create_account'
+  | 'mail_create_account_doctor'
+  | 'mail_create_account_secretary'
+  | 'mail_password_reset'
+  | 'mail_email_verification'
   extraData?: Record<string, any>
 }
 

@@ -1,12 +1,13 @@
 import { HttpContext } from '@adonisjs/core/http'
 import { inject } from '@adonisjs/core'
 import User from '#models/user'
+import PasswordReset from '#models/password_reset'
 import { UserValidator } from '#validators/user'
 import ReminderService from '#services/reminderService'
 import { DateTime } from 'luxon'
 @inject()
 export default class AuthController {
-  constructor(private reminderService: ReminderService) {}
+  constructor(private reminderService: ReminderService) { }
 
   async register({ request, response }: HttpContext) {
     const data = await request.validateUsing(UserValidator.create)
@@ -176,4 +177,102 @@ export default class AuthController {
       })
     }
   }
+
+  async forgotPassword({ request, response }: HttpContext) {
+    const { email } = request.only(['email'])
+
+    try {
+      const user = await User.findBy('email', email)
+
+      if (!user) {
+        return response.notFound({
+          error: 'User not found',
+        })
+      }
+
+      if (!user.active) {
+        return response.unauthorized({
+          error: 'Account is not active',
+        })
+      }
+
+      const resetToken = Math.floor(100000 + Math.random() * 900000).toString()
+      const resetExpires = DateTime.now().plus({ hours: 24 })
+
+      await PasswordReset.query().where('user_id', user.id).delete()
+      await PasswordReset.create({ userId: user.id, token: resetToken, expiresAt: resetExpires })
+
+      await this.reminderService.scheduleReminderForEvent(
+        user.id,
+        '',
+        0,
+        user.email,
+        DateTime.now().plus({ seconds: 10 }),
+        'mail_password_reset',
+        '',
+        {
+          userId: user.id,
+          resetToken: resetToken,
+          firstname: user.firstname,
+        }
+      )
+
+      return response.ok({
+        message: 'Password reset email sent successfully',
+      })
+    } catch (error) {
+      return response.badRequest({
+        error: 'Error sending password reset email',
+        details: error.message,
+      })
+    }
+  }
+
+  async resetPassword({ request, response }: HttpContext) {
+    const { email, code, password } = request.only(['email', 'code', 'password'])
+
+    try {
+      const user = await User.findBy('email', email)
+      if (!user) {
+        return response.notFound({
+          error: 'User not found',
+        })
+      }
+      const passwordReset = await PasswordReset.query().where('token', code).andWhere('userId', user.id).preload('user').first()
+
+      if (!passwordReset) {
+        return response.badRequest({
+          error: 'Invalid or expired reset token',
+        })
+      }
+
+      if (passwordReset.expiresAt < DateTime.now()) {
+        return response.badRequest({
+          error: 'Reset token has expired',
+        })
+      }
+
+      if (!user.active) {
+        return response.unauthorized({
+          error: 'Account is not active',
+        })
+      }
+
+      user.password = password
+      await user.save()
+
+      // Delete the password reset record after successful reset
+      await passwordReset.delete()
+
+      return response.ok({
+        message: 'Password reset successfully',
+      })
+    } catch (error) {
+      return response.badRequest({
+        error: 'Error resetting password',
+        details: error.message,
+      })
+    }
+  }
+
 }

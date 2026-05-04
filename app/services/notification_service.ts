@@ -16,17 +16,17 @@ export default class NotificationService {
     eventId: string
     contactId: number | null
     type:
-      | 'mail_appointment_confirmation'
-      | 'mail_appointment_reminder'
-      | 'mail_appointment_cancellation'
-      | 'mail_appointment_cancellation_doctor'
-      | 'mail_appointment_reschedule'
-      | 'mail_center_invitation'
-      | 'mail_create_account'
-      | 'mail_create_account_doctor'
-      | 'mail_create_account_secretary'
-      | 'mail_password_forgot'
-      | 'mail_email_verification'
+    | 'mail_appointment_confirmation'
+    | 'mail_appointment_reminder'
+    | 'mail_appointment_cancellation'
+    | 'mail_appointment_cancellation_doctor'
+    | 'mail_appointment_reschedule'
+    | 'mail_center_invitation'
+    | 'mail_create_account'
+    | 'mail_create_account_doctor'
+    | 'mail_create_account_secretary'
+    | 'mail_password_reset'
+    | 'mail_email_verification'
 
     channel: 'email' | 'sms' | 'push'
     recipient: string
@@ -173,10 +173,14 @@ export default class NotificationService {
             result = await this.brevoService.sendNewAccountSecretary(user)
           }
           break
-        // case 'mail_password_forgot':
         case 'mail_email_verification':
           if (user) {
             result = await this.brevoService.sendEmailVerification(user)
+          }
+          break
+        case 'mail_password_reset':
+          if (user) {
+            result = await this.brevoService.sendResetPassword(user, extraData!.resetToken)
           }
           break
         default:

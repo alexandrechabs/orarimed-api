@@ -25,7 +25,7 @@ export default class Notification extends BaseModel {
     | 'mail_create_account'
     | 'mail_create_account_doctor'
     | 'mail_create_account_secretary'
-    | 'mail_password_forgot'
+    | 'mail_password_reset'
     | 'mail_email_verification'
 
   @column()

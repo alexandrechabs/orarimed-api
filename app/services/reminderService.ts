@@ -20,7 +20,7 @@ export default class ReminderService {
       | 'mail_create_account'
       | 'mail_create_account_doctor'
       | 'mail_create_account_secretary'
-      | 'mail_password_forgot'
+      | 'mail_password_reset'
       | 'mail_email_verification',
     reminderDelay: string,
     extraData?: Record<string, any>
@@ -28,7 +28,7 @@ export default class ReminderService {
     try {
       // Import dynamique pour éviter les erreurs de compilation
       const { default: SendAppointmentReminder } =
-      await import('../jobs/send_appointment_reminder.js')
+        await import('../jobs/send_appointment_reminder.js')
 
       const timeZone = 'Europe/Paris'
 
