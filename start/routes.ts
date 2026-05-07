@@ -5,6 +5,7 @@ import UsersController from '#controllers/users_controller'
 import EventsController from '#controllers/events_controller'
 import SpecialitiesController from '#controllers/specialities_controller'
 import CentersController from '#controllers/centers_controller'
+import OtherController from '#controllers/other_controller'
 
 router.get('/', async () => {
   return {
@@ -20,6 +21,7 @@ router.post('/verify-email', [AuthController, 'verifyEmail'])
   .use([middleware.auth(), middleware.role(['USER'])])
 router.post('/resend-verification', [AuthController, 'resendVerificationEmail'])
   .use([middleware.auth(), middleware.role(['USER'])])
+router.post('/form', [OtherController, 'form'])
 router
   .get('/user/', [UsersController, 'me'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])

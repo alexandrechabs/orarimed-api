@@ -27,6 +27,7 @@ export default class NotificationService {
     | 'mail_create_account_secretary'
     | 'mail_password_reset'
     | 'mail_email_verification'
+    | 'mail_contact_form'
 
     channel: 'email' | 'sms' | 'push'
     recipient: string
@@ -181,6 +182,11 @@ export default class NotificationService {
         case 'mail_password_reset':
           if (user) {
             result = await this.brevoService.sendResetPassword(user, extraData!.resetToken)
+          }
+          break
+        case 'mail_contact_form':
+          if (extraData) {
+            result = await this.brevoService.sendContactForm(extraData)
           }
           break
         default:

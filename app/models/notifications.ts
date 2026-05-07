@@ -27,6 +27,7 @@ export default class Notification extends BaseModel {
     | 'mail_create_account_secretary'
     | 'mail_password_reset'
     | 'mail_email_verification'
+    | 'mail_contact_form'
 
   @column()
   declare channel: 'email' | 'sms' | 'push'

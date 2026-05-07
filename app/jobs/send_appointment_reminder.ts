@@ -20,6 +20,7 @@ type SendAppointmentReminderPayload = {
   | 'mail_create_account_secretary'
   | 'mail_password_reset'
   | 'mail_email_verification'
+  | 'mail_contact_form'
   extraData?: Record<string, any>
 }
 

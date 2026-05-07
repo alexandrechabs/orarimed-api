@@ -429,4 +429,20 @@ export default class BrevoService {
       language,
     })
   }
+
+  async sendContactForm(data: any) {
+    const templateId = 34 // Template ID pour le formulaire de contact
+
+    return this.sendTransactionalEmail({
+      to: [{ email: 'alexandrechabane72@gmail.com', name: 'OrariMed' }],
+      templateId,
+      params: {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        message: data.message,
+      },
+      language: 'fr',
+    })
+  }
 }

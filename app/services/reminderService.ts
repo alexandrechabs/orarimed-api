@@ -21,7 +21,8 @@ export default class ReminderService {
       | 'mail_create_account_doctor'
       | 'mail_create_account_secretary'
       | 'mail_password_reset'
-      | 'mail_email_verification',
+      | 'mail_email_verification'
+      | 'mail_contact_form',
     reminderDelay: string,
     extraData?: Record<string, any>
   ) {
