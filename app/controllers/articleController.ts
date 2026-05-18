@@ -1,6 +1,8 @@
 import { HttpContext } from '@adonisjs/core/http'
 import ArticleService from '#services/ArticleService'
-import User from '#models/user'
+import Article from '#models/article'
+import { Readable } from 'stream'
+import R2Service from '#services/R2Service'
 
 export default class ArticlesController {
   private service = new ArticleService()
@@ -9,12 +11,7 @@ export default class ArticlesController {
    * CREATE ARTICLE
    */
   public async store({ request }: HttpContext) {
-    const data = request.only([
-      'author',
-      'categoryId',
-      'featuredImage',
-      'translations',
-    ])
+    const data = request.only(['author', 'categoryId', 'featuredImage', 'translations'])
 
     const article = await this.service.create(data)
 
@@ -25,20 +22,45 @@ export default class ArticlesController {
   }
 
   /**
-   * PUBLISH
+   * UPDATE ARTICLE
    */
-  public async publish({ params, request }: HttpContext) {
-    const localeCode = request.input('localeCode')
+  public async update({ params, request }: HttpContext) {
+    const data = request.only(['author', 'categoryId', 'status', 'featuredImage', 'translations'])
 
-    const article = await this.service.publish(
-      params.id,
-      localeCode
-    )
+    const article = await this.service.update(params.id, data)
 
     return {
       success: true,
       article,
     }
+  }
+
+  /**
+   * GET ARTICLE IMAGE
+   */
+  public async image({ auth, params, response }: HttpContext) {
+    await auth.check()
+    const authUser = auth.user
+
+    const article = await Article.findOrFail(params.id)
+
+    if (
+      !article.featuredImage ||
+      params.imageId !== article.featuredImage ||
+      (article.status !== 'published' &&
+        (!authUser || (authUser.roleId !== 4 && authUser.roleId !== 2)))
+    ) {
+      return response.status(404).json({ message: 'Image non trouvée' })
+    }
+    const r2Service = new R2Service()
+    let img = await r2Service.getImage(`article/${article.featuredImage}.webp`)
+
+    // Headers importants
+    response.header('Content-Type', img.ContentType || 'application/octet-stream')
+    response.header('Content-Length', img.ContentLength?.toString() || '')
+    response.header('Cache-Control', 'private, max-age=3600')
+
+    return response.stream(img.Body as Readable)
   }
 
   /**
@@ -57,18 +79,19 @@ export default class ArticlesController {
   /**
    * LIST BLOG
    */
-  public async index({ auth, request, params }: HttpContext) {
-    const auth_user = auth.user! as unknown as User
+  public async index({ auth, request }: HttpContext) {
+    await auth.check()
+    const authUser = auth.user
     const page = request.input('page', 1)
     const limit = request.input('limit', 10)
 
-    const locale = params.locale
+    const locale = request.input('locale')
 
-    if (auth_user.roleId === 4 || auth_user.roleId === 2) {
+    if (authUser && (authUser.roleId === 4 || authUser.roleId === 2)) {
       // For admin
       return this.service.listForAdmin(page, limit)
     }
-    
+
     return this.service.list(locale, page, limit)
   }
 }

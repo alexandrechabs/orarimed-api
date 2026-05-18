@@ -1,6 +1,10 @@
 import Article from '#models/article'
 import ArticleTranslation from '#models/articleTranslation'
 import Locale from '#models/locale'
+import R2Service from '#services/R2Service'
+import { cuid } from '@adonisjs/core/helpers'
+import sharp from 'sharp'
+import { DateTime } from 'luxon'
 
 export default class ArticleService {
   /**
@@ -29,43 +33,70 @@ export default class ArticleService {
     })
 
     for (const t of payload.translations) {
-      console.log(t)
-
-      await ArticleTranslation.create({
-        articleId: article.id,
-        localeId: t.localeId,
-        title: t.title,
-        slug: t.slug,
-        content: t.content,
-        excerpt: t.excerpt,
-        seoTitle: t.seoTitle,
-        seoDescription: t.seoDescription,
-        isPublished: false,
-      })
+      if (t.title) {
+        await ArticleTranslation.create({
+          articleId: article.id,
+          localeId: t.localeId,
+          title: t.title,
+          slug: t.slug,
+          content: t.content,
+          excerpt: t.excerpt,
+          seoTitle: t.seoTitle,
+          seoDescription: t.seoDescription,
+          isPublished: false,
+        })
+      }
     }
 
     return article
   }
 
   /**
-   * PUBLISH ARTICLE (ALL OR PER LOCALE)
+   * UPDATE ARTICLE
    */
-  public async publish(articleId: number, localeCode?: string) {
+  public async update(articleId: number, payload: any) {
     const article = await Article.findOrFail(articleId)
+    const r2Service = new R2Service()
+    // save image if add or updated and delete old one if exist and updated
+    if (payload.featuredImage && payload.featuredImage !== article.featuredImage) {
+      // delete old image if exist
+      if (article.featuredImage) {
+        // delete old image logic here
+        await r2Service.deleteFile(`article/${article.featuredImage}.webp`)
+      }
+      // upload new image in R2 from base 64 and convert it to webp with sharp
+      const buffer = Buffer.from(
+        payload.featuredImage.replace(/^data:image\/\w+;base64,/, ''),
+        'base64'
+      )
+      const webpBuffer = await sharp(buffer).webp().toBuffer()
+      const fileName = cuid()
+      await r2Service.uploadFile(`article/${fileName}.webp`, webpBuffer, 'image/webp')
+      payload.featuredImage = fileName
+    }
 
-    if (localeCode) {
-      const locale = await Locale.findByOrFail('code', localeCode)
+    if (payload.status && payload.status === 'published' && article.status !== 'published') {
+      payload.publishedAt = DateTime.now()
+    }
+    await article.merge(payload).save()
 
-      await ArticleTranslation.query()
-        .where('article_id', articleId)
-        .where('locale_id', locale.id)
-        .update({ is_published: true })
-    } else {
-      await ArticleTranslation.query().where('article_id', articleId).update({ is_published: true })
+    // update translations
+    if (payload.translations && payload.translations.length > 0) {
+      for (const t of payload.translations) {
+        const translation = await ArticleTranslation.findByOrFail('id', t.id)
 
-      article.status = 'published'
-      article.publishedAt = new Date() as any
-      await article.save()
+        await translation
+          .merge({
+            title: t.title,
+            slug: t.slug,
+            content: t.content,
+            excerpt: t.excerpt,
+            seoTitle: t.seoTitle,
+            seoDescription: t.seoDescription,
+            isPublished: t.isPublished,
+          })
+          .save()
+      }
     }
 
     return article

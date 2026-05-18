@@ -140,15 +140,12 @@ router
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
 // Articles
-router
-  .get('articles', [ArticlesController, 'index'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router.get('articles', [ArticlesController, 'index'])
 router
   .post('articles', [ArticlesController, 'store'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 router
-  .post('articles/:id/publish', [ArticlesController, 'publish'])
+  .put('articles/:id', [ArticlesController, 'update'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
-router
-  .get('articles/:slug/:locale', [ArticlesController, 'show'])
-  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router.get('articles/:id/image/:imageId', [ArticlesController, 'image'])
+router.get('articles/:locale/:slug/', [ArticlesController, 'show'])
