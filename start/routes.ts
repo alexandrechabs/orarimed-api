@@ -6,6 +6,8 @@ import EventsController from '#controllers/events_controller'
 import SpecialitiesController from '#controllers/specialities_controller'
 import CentersController from '#controllers/centers_controller'
 import OtherController from '#controllers/other_controller'
+import CategoryController from '#controllers/categoryController'
+import ArticlesController from '#controllers/articleController'
 
 router.get('/', async () => {
   return {
@@ -17,9 +19,11 @@ router.post('/register', [AuthController, 'register']) // Ajout de la route d'in
 router.post('/login', [AuthController, 'login'])
 router.post('/forgot-password', [AuthController, 'forgotPassword'])
 router.post('/reset-password', [AuthController, 'resetPassword'])
-router.post('/verify-email', [AuthController, 'verifyEmail'])
+router
+  .post('/verify-email', [AuthController, 'verifyEmail'])
   .use([middleware.auth(), middleware.role(['USER'])])
-router.post('/resend-verification', [AuthController, 'resendVerificationEmail'])
+router
+  .post('/resend-verification', [AuthController, 'resendVerificationEmail'])
   .use([middleware.auth(), middleware.role(['USER'])])
 router.post('/form', [OtherController, 'form'])
 router
@@ -102,6 +106,18 @@ router
   .post('specialities', [SpecialitiesController, 'create'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
+router.get('categories', [CategoryController, 'index'])
+router
+  .post('categories', [CategoryController, 'create'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router.get('categories/:id', [CategoryController, 'show'])
+router
+  .put('categories/:id', [CategoryController, 'update'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .delete('categories/:id', [CategoryController, 'delete'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
 router
   .get('center', [CentersController, 'getCenters'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
@@ -135,3 +151,14 @@ router
 router
   .put('admin/user/:id', [UsersController, 'updateUserAdmin'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+// Articles
+router.get('articles', [ArticlesController, 'index'])
+router
+  .post('articles', [ArticlesController, 'store'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .put('articles/:id', [ArticlesController, 'update'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router.get('articles/:id/image/:imageId', [ArticlesController, 'image'])
+router.get('articles/:locale/:slug/', [ArticlesController, 'show'])

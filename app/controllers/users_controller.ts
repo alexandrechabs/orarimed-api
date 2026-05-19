@@ -536,7 +536,7 @@ export default class UsersController {
       const doctors = await query
 
       return doctors
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la recherche de médecins:', error)
       return response.status(500).json({
         status: 'error',
