@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     dumb-init \
     libvips-dev \
     build-essential \
+    python3 \
+    python3-dev \
+    pkg-config \
  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
