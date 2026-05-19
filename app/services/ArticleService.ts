@@ -1,5 +1,4 @@
 import Article from '#models/article'
-import ArticleTranslation from '#models/articleTranslation'
 import Locale from '#models/locale'
 import R2Service from '#services/R2Service'
 import { cuid } from '@adonisjs/core/helpers'
@@ -8,45 +7,34 @@ import { DateTime } from 'luxon'
 
 export default class ArticleService {
   /**
-   * CREATE ARTICLE + TRANSLATIONS
+   * CREATE ARTICLE
    */
   public async create(payload: {
     author?: string
     status?: string
     categoryId?: number
     featuredImage?: string
-    translations: Array<{
-      localeId: number
-      title: string
-      slug: string
-      content: string
-      excerpt?: string
-      seoTitle?: string
-      seoDescription?: string
-    }>
+    localeId: number
+    title: string
+    slug: string
+    content: string
+    excerpt?: string
+    seoTitle?: string
+    seoDescription?: string
   }) {
     const article = await Article.create({
       author: payload.author,
       categoryId: payload.categoryId,
       featuredImage: payload.featuredImage,
       status: payload.status || 'draft',
+      localeId: payload.localeId,
+      title: payload.title,
+      slug: payload.slug,
+      content: payload.content,
+      excerpt: payload.excerpt,
+      seoTitle: payload.seoTitle,
+      seoDescription: payload.seoDescription,
     })
-
-    for (const t of payload.translations) {
-      if (t.title) {
-        await ArticleTranslation.create({
-          articleId: article.id,
-          localeId: t.localeId,
-          title: t.title,
-          slug: t.slug,
-          content: t.content,
-          excerpt: t.excerpt,
-          seoTitle: t.seoTitle,
-          seoDescription: t.seoDescription,
-          isPublished: false,
-        })
-      }
-    }
 
     return article
   }
@@ -78,47 +66,20 @@ export default class ArticleService {
     if (payload.status && payload.status === 'published' && article.status !== 'published') {
       payload.publishedAt = DateTime.now()
     }
-    await article.merge(payload).save()
-
-    // update translations
-    if (payload.translations && payload.translations.length > 0) {
-      for (const t of payload.translations) {
-        const translation = await ArticleTranslation.findByOrFail('id', t.id)
-
-        await translation
-          .merge({
-            title: t.title,
-            slug: t.slug,
-            content: t.content,
-            excerpt: t.excerpt,
-            seoTitle: t.seoTitle,
-            seoDescription: t.seoDescription,
-            isPublished: t.isPublished,
-          })
-          .save()
-      }
-    }
-
-    return article
+    return await article.merge(payload).save()
   }
 
   /**
    * GET ARTICLE BY SLUG + LOCALE (SEO VIEW)
    */
   public async getBySlug(slug: string, localeCode: string) {
-    return ArticleTranslation.query()
+    return Article.query()
       .where('slug', slug)
       .whereHas('locale', (q) => {
         q.where('code', localeCode)
       })
-      .preload('article', (q) => {
-        q.preload('category', (q2) => {
-          q2.preload('translations')
-        })
-        q.preload('tags', (q2) => {
-          q2.preload('translations')
-        })
-      })
+      .preload('category', (q) => q.preload('translations'))
+      .preload('tags', (q) => q.preload('translations'))
       .firstOrFail()
   }
 
@@ -127,24 +88,57 @@ export default class ArticleService {
    */
   public async list(localeCode: string, page = 1, limit = 10) {
     const locale = await Locale.findByOrFail('code', localeCode)
-
-    return ArticleTranslation.query()
+    const paginated = await Article.query()
       .where('locale_id', locale.id)
-      .where('is_published', true)
-      .preload('article')
+      .where('status', 'published')
+      .preload('category', (q) => q.preload('translations'))
+      .preload('tags', (q) => q.preload('translations'))
       .orderBy('created_at', 'desc')
       .paginate(page, limit)
+
+    const result = paginated.toJSON()
+
+    result.data = result.data.map((article: any) => {
+      if (article.category?.translations) {
+        const selectedTranslation = article.category.translations.find(
+          (translation: any) =>
+            translation.localeId === article.localeId || translation.locale_id === article.localeId
+        )
+
+        article.category.translations = selectedTranslation ? [selectedTranslation] : []
+        article.category.translation = selectedTranslation || null
+      }
+      return article
+    })
+
+    return result
   }
 
   /**
    * LIST ARTICLES FOR ADMIN
    */
   public async listForAdmin(page = 1, limit = 10) {
-    return Article.query()
+    const paginated = await Article.query()
       .orderBy('created_at', 'desc')
-      .preload('translations', (q) => {
-        q.preload('locale')
-      })
+      .preload('locale')
+      .preload('category', (q) => q.preload('translations'))
       .paginate(page, limit)
+
+    const result = paginated.toJSON()
+
+    result.data = result.data.map((article: any) => {
+      if (article.category?.translations) {
+        const selectedTranslation = article.category.translations.find(
+          (translation: any) =>
+            translation.localeId === article.localeId || translation.locale_id === article.localeId
+        )
+
+        article.category.translations = selectedTranslation ? [selectedTranslation] : []
+        article.category.translation = selectedTranslation || null
+      }
+      return article
+    })
+
+    return result
   }
 }

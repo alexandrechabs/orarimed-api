@@ -11,7 +11,19 @@ export default class ArticlesController {
    * CREATE ARTICLE
    */
   public async store({ request }: HttpContext) {
-    const data = request.only(['author', 'categoryId', 'featuredImage', 'translations'])
+    const data = request.only([
+      'author',
+      'categoryId',
+      'featuredImage',
+      'localeId',
+      'title',
+      'slug',
+      'content',
+      'excerpt',
+      'seoTitle',
+      'seoDescription',
+      'status',
+    ])
 
     const article = await this.service.create(data)
 
@@ -25,7 +37,18 @@ export default class ArticlesController {
    * UPDATE ARTICLE
    */
   public async update({ params, request }: HttpContext) {
-    const data = request.only(['author', 'categoryId', 'status', 'featuredImage', 'translations'])
+    const data = request.only([
+      'author',
+      'categoryId',
+      'status',
+      'featuredImage',
+      'title',
+      'slug',
+      'content',
+      'excerpt',
+      'seoTitle',
+      'seoDescription',
+    ])
 
     const article = await this.service.update(params.id, data)
 

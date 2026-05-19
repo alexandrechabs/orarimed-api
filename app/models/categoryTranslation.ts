@@ -17,9 +17,6 @@ export default class CategoryTranslation extends BaseModel {
   @column()
   declare name: string
 
-  @column()
-  declare slug: string
-
   @belongsTo(() => Category)
   declare category: BelongsTo<typeof Category>
 

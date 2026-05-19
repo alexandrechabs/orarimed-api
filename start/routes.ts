@@ -6,6 +6,7 @@ import EventsController from '#controllers/events_controller'
 import SpecialitiesController from '#controllers/specialities_controller'
 import CentersController from '#controllers/centers_controller'
 import OtherController from '#controllers/other_controller'
+import CategoryController from '#controllers/categoryController'
 import ArticlesController from '#controllers/articleController'
 
 router.get('/', async () => {
@@ -103,6 +104,18 @@ router
 router.get('specialities', [SpecialitiesController, 'index'])
 router
   .post('specialities', [SpecialitiesController, 'create'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router.get('categories', [CategoryController, 'index'])
+router
+  .post('categories', [CategoryController, 'create'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router.get('categories/:id', [CategoryController, 'show'])
+router
+  .put('categories/:id', [CategoryController, 'update'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .delete('categories/:id', [CategoryController, 'delete'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
 router

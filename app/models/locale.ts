@@ -1,9 +1,9 @@
 import { DateTime } from 'luxon'
 import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
-    import type { HasMany } from '@adonisjs/lucid/types/relations'
-    import ArticleTranslation from './articleTranslation.js'
-    import CategoryTranslation from './categoryTranslation.js'
-    import TagTranslation from './tagTranslation.js'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+import Article from './article.js'
+import CategoryTranslation from './categoryTranslation.js'
+import TagTranslation from './tagTranslation.js'
 
 export default class Locale extends BaseModel {
   @column({ isPrimary: true })
@@ -24,8 +24,8 @@ export default class Locale extends BaseModel {
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
-  @hasMany(() => ArticleTranslation)
-  declare articleTranslations: HasMany<typeof ArticleTranslation>
+  @hasMany(() => Article)
+  declare articles: HasMany<typeof Article>
 
   @hasMany(() => CategoryTranslation)
   declare categoryTranslations: HasMany<typeof CategoryTranslation>

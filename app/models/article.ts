@@ -1,16 +1,10 @@
 import { DateTime } from 'luxon'
-import {
-  BaseModel,
-  column,
-  belongsTo,
-  hasMany,
-  manyToMany,
-} from '@adonisjs/lucid/orm'
+import { BaseModel, column, belongsTo, manyToMany } from '@adonisjs/lucid/orm'
 
-import type { BelongsTo, HasMany, ManyToMany } from '@adonisjs/lucid/types/relations'
+import type { BelongsTo, ManyToMany } from '@adonisjs/lucid/types/relations'
 
 import Category from './category.js'
-import ArticleTranslation from './articleTranslation.js'
+import Locale from './locale.js'
 import Tag from './tag.js'
 
 export default class Article extends BaseModel {
@@ -18,7 +12,7 @@ export default class Article extends BaseModel {
   declare id: number
 
   @column()
-  declare author: string
+  declare author?: string
 
   @column()
   declare categoryId?: number
@@ -28,6 +22,33 @@ export default class Article extends BaseModel {
 
   @column()
   declare featuredImage?: string
+
+  @column()
+  declare localeId: number
+
+  @column()
+  declare title: string
+
+  @column()
+  declare slug: string
+
+  @column()
+  declare excerpt?: string
+
+  @column()
+  declare content: string
+
+  @column()
+  declare seoTitle?: string
+
+  @column()
+  declare seoDescription?: string
+
+  @column()
+  declare canonicalUrl?: string
+
+  @column()
+  declare readingTime?: number
 
   @column.dateTime()
   declare publishedAt?: DateTime
@@ -43,8 +64,8 @@ export default class Article extends BaseModel {
   @belongsTo(() => Category)
   declare category: BelongsTo<typeof Category>
 
-  @hasMany(() => ArticleTranslation)
-  declare translations: HasMany<typeof ArticleTranslation>
+  @belongsTo(() => Locale)
+  declare locale: BelongsTo<typeof Locale>
 
   @manyToMany(() => Tag, {
     pivotTable: 'article_tags',

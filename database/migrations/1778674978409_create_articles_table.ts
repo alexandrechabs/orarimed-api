@@ -6,9 +6,7 @@ export default class extends BaseSchema {
   async up() {
     this.schema.createTable(this.tableName, (table) => {
       table.increments('id')
-      table
-        .text('author')
-        .nullable()
+      table.text('author').nullable()
 
       table
         .integer('category_id')
@@ -21,9 +19,32 @@ export default class extends BaseSchema {
 
       table.text('featured_image').nullable()
 
+      table.integer('locale_id').unsigned().references('locales.id').onDelete('CASCADE')
+
+      table.string('title').notNullable()
+
+      table.string('slug').notNullable()
+
+      table.text('excerpt').nullable()
+
+      table.text('content', 'longtext').notNullable()
+
+      table.string('seo_title').nullable()
+
+      table.text('seo_description').nullable()
+
+      table.text('canonical_url').nullable()
+
+      table.integer('reading_time').nullable()
+
       table.timestamp('published_at', { useTz: true }).nullable()
       table.timestamp('created_at')
       table.timestamp('updated_at')
+
+      table.unique(['locale_id', 'slug'])
+
+      table.index(['slug'])
+      table.index(['locale_id'])
     })
   }
 

@@ -18,16 +18,16 @@ export default class extends BaseSchema {
 
   // add locales
   async seed() {
-  const locales = [
-    { code: 'fr', language: 'Francais', country: 'FR' },
-    { code: 'en', language: 'English', country: 'US' },
-    { code: 'sq', language: 'Shqip', country: 'AL' },
-  ]
+    const locales = [
+      { code: 'sq', language: 'Shqip', country: 'AL' },
+      { code: 'fr', language: 'Francais', country: 'FR' },
+      { code: 'en', language: 'English', country: 'US' },
+    ]
 
-  for (const locale of locales) {
-    await this.db.table('locales').insert(locale)
+    for (const locale of locales) {
+      await this.db.table('locales').insert(locale)
+    }
   }
-}
 
   async down() {
     this.schema.dropTable(this.tableName)
