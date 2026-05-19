@@ -3,14 +3,11 @@ ARG NODE_IMAGE=node:20.11.1-slim
 FROM $NODE_IMAGE AS base
 
 USER root
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
     dumb-init \
     libvips-dev \
     build-essential \
-    python3 \
-    pkg-config \
- && apt-get clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+ && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /home/node/app && chown -R node:node /home/node/app
 WORKDIR /home/node/app
