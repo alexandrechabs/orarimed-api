@@ -6,6 +6,7 @@ const reasonSchema = vine.object({
   duration: vine.number(),
   color: vine.string(),
   type: vine.string(),
+  active: vine.boolean(),
 })
 
 export const ReasonValidator = {

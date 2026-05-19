@@ -22,6 +22,9 @@ export default class Reason extends BaseModel {
   @column()
   declare type: string
 
+  @column()
+  declare active: boolean
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

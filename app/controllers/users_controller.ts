@@ -250,7 +250,10 @@ export default class UsersController {
       return response.notFound({ error: 'User not found' })
     }
 
-    let reasons = await Reason.query().where('userId', user.id).andWhere('type', 'appointment')
+    let reasons = await Reason.query()
+      .where('userId', user.id)
+      .andWhere('active', 'true')
+      .andWhere('type', 'appointment')
 
     return reasons
   }
@@ -303,6 +306,7 @@ export default class UsersController {
               duration: reason.duration,
               color: reason.color,
               type: reason.type,
+              active: reason.active,
             })
             await existingReason.save()
           }
@@ -313,6 +317,7 @@ export default class UsersController {
             duration: reason.duration,
             color: reason.color,
             type: reason.type,
+            active: reason.active,
           })
         }
       }
