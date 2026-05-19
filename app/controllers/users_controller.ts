@@ -453,11 +453,22 @@ export default class UsersController {
     return result
   }
 
+  async listDoctor() {
+    return await User.query()
+      .where('role_id', 2) // Filtre pour les médecins
+      .where('active', true)
+      .where('visible', true)
+      .preload('speciality')
+      .select(['users.id', 'users.speciality_id', 'users.doctor_identifier', 'users.created_at'])
+  }
+
   async searchDoctor({ request, response }: HttpContext) {
     try {
       // Récupérer et valider les paramètres de la requête
-      const { lat, lng, q, locale } = await request.validateUsing(UserValidator.searchDoctor)
-
+      const { lat, lng, q, locale, page } = await request.validateUsing(UserValidator.searchDoctor)
+      const distance = 25000 // distance en mètres (25 km)
+      const currentPage = page || 1
+      const number = 10
       // Construire la requête de base
       const query = User.query()
         .where('role_id', 2) // Filtre pour les médecins
@@ -468,7 +479,7 @@ export default class UsersController {
           `ST_DWithin(
           ST_MakePoint(?, ?)::geography,
           ST_MakePoint(ST_X(coordinate::geometry), ST_Y(coordinate::geometry))::geography,
-          10000
+          ${distance}
         )`,
           [lng, lat] // PostgreSQL utilise l'ordre (longitude, latitude)
         )
@@ -522,9 +533,6 @@ export default class UsersController {
       // Trier par distance
       query.orderBy('distance', 'asc')
 
-      // Limiter les résultats
-      query.limit(50)
-
       // Charger les relations nécessaires
       query.preload('speciality', (query) => {
         query.preload('translations')
@@ -533,7 +541,7 @@ export default class UsersController {
         query.preload('translations')
       })
 
-      const doctors = await query
+      const doctors = await query.paginate(currentPage, number)
 
       return doctors
     } catch (error: any) {

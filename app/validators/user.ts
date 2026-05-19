@@ -76,6 +76,7 @@ export const UserValidator = {
       lng: vine.string().transform(Number),
       locale: vine.string().trim(),
       q: vine.string().trim(),
+      page: vine.string().transform(Number).optional(),
     })
   ),
   addSecretaryUsers: vine.compile(
