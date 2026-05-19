@@ -7,7 +7,7 @@ import ReminderService from '#services/reminderService'
 import { DateTime } from 'luxon'
 @inject()
 export default class AuthController {
-  constructor(private reminderService: ReminderService) { }
+  constructor(private reminderService: ReminderService) {}
 
   async register({ request, response }: HttpContext) {
     const data = await request.validateUsing(UserValidator.create)
@@ -57,7 +57,7 @@ export default class AuthController {
           emailVerified: user.emailVerified,
         },
       })
-    } catch (error) {
+    } catch (error: any) {
       return response.badRequest({
         error: 'Error during registration',
         details: error.message,
@@ -89,7 +89,7 @@ export default class AuthController {
       return response.ok({
         message: 'Email verified successfully. Your account is now active.',
       })
-    } catch (error) {
+    } catch (error: any) {
       return response.badRequest({
         error: 'Error verifying email',
         details: error.message,
@@ -139,7 +139,7 @@ export default class AuthController {
       return response.ok({
         message: 'Verification email sent successfully',
       })
-    } catch (error) {
+    } catch (error: any) {
       return response.badRequest({
         error: 'Error resending verification email',
         details: error.message,
@@ -171,7 +171,7 @@ export default class AuthController {
           emailVerified: user.emailVerified,
         },
       })
-    } catch (error) {
+    } catch (error: any) {
       return response.unauthorized({
         error: 'Invalid credentials',
       })
@@ -220,7 +220,7 @@ export default class AuthController {
       return response.ok({
         message: 'Password reset email sent successfully',
       })
-    } catch (error) {
+    } catch (error: any) {
       return response.badRequest({
         error: 'Error sending password reset email',
         details: error.message,
@@ -238,7 +238,11 @@ export default class AuthController {
           error: 'User not found',
         })
       }
-      const passwordReset = await PasswordReset.query().where('token', code).andWhere('userId', user.id).preload('user').first()
+      const passwordReset = await PasswordReset.query()
+        .where('token', code)
+        .andWhere('userId', user.id)
+        .preload('user')
+        .first()
 
       if (!passwordReset) {
         return response.badRequest({
@@ -267,12 +271,11 @@ export default class AuthController {
       return response.ok({
         message: 'Password reset successfully',
       })
-    } catch (error) {
+    } catch (error: any) {
       return response.badRequest({
         error: 'Error resetting password',
         details: error.message,
       })
     }
   }
-
 }
