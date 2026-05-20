@@ -15,7 +15,7 @@ router.get('/', async () => {
     hello: 'world',
   }
 })
-router.get('/sitemap', [SitemapController, 'index']) // Alias sitemap
+router.get('/getSitemap', [SitemapController, 'index']) // Alias sitemap
 router.post('/register', [AuthController, 'register']) // Ajout de la route d'inscription
 router.post('/login', [AuthController, 'login'])
 router.post('/forgot-password', [AuthController, 'forgotPassword'])
