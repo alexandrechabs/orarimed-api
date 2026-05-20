@@ -14,7 +14,7 @@ export const UserValidator = {
           const user = await db.from('users').where('email', value).first()
           return !user
         }),
-      password: vine.string().minLength(8).maxLength(32),
+      password: vine.string().minLength(8).maxLength(32).optional(),
       roleId: vine.number(),
       acceptTerms: vine.boolean(),
       specialityId: vine.number().optional(),

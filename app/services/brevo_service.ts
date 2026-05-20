@@ -269,13 +269,13 @@ export default class BrevoService {
         }),
         old_date: oldDate
           ? format(oldDate, 'PPPP', {
-            locale: this.returnLocale(language),
-          })
+              locale: this.returnLocale(language),
+            })
           : '',
         old_time: oldDate
           ? format(oldDate, 'p', {
-            locale: this.returnLocale(language),
-          })
+              locale: this.returnLocale(language),
+            })
           : '',
         title_time: format(eventData.start, 'PPPPp', {
           locale: this.returnLocale(language),
@@ -283,6 +283,7 @@ export default class BrevoService {
         doctor_firstname: eventData.practitioner.firstname,
         doctor_lastname: eventData.practitioner.lastname,
         title: eventData.title,
+        link: 'https://orarimed.com/appointments',
       },
       language,
     })
@@ -331,12 +332,13 @@ export default class BrevoService {
         firstname: user.firstname,
         lastname: user.lastname,
         email: user.email,
+        link: 'https://orarimed.com/dashboard',
       },
       language,
     })
   }
 
-  async sendNewAccountDoctor(user: User) {
+  async sendNewAccountDoctor(user: User, resetToken: string) {
     const language = user.language || 'sq'
 
     const templateIds = {
@@ -354,12 +356,19 @@ export default class BrevoService {
         firstname: user.firstname,
         lastname: user.lastname,
         email: user.email,
+        link:
+          'https://orarimed.com/reset-password?email=' +
+          encodeURIComponent(user.email) +
+          '&token=' +
+          resetToken +
+          '&lang=' +
+          user.language,
       },
       language,
     })
   }
 
-  async sendNewAccountSecretary(user: User) {
+  async sendNewAccountSecretary(user: User, resetToken: string) {
     const language = user.language || 'sq'
 
     const templateIds = {
@@ -377,6 +386,13 @@ export default class BrevoService {
         firstname: user.firstname,
         lastname: user.lastname,
         email: user.email,
+        link:
+          'https://orarimed.com/reset-password?email=' +
+          encodeURIComponent(user.email) +
+          '&token=' +
+          resetToken +
+          '&lang=' +
+          user.language,
       },
       language,
     })

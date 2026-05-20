@@ -21,6 +21,7 @@ import { Readable } from 'node:stream'
 import { DateTime } from 'luxon'
 import { inject } from '@adonisjs/core'
 import SecretaryUser from '#models/secretary_user'
+import PasswordReset from '#models/password_reset'
 
 @inject()
 export default class UsersController {
@@ -689,7 +690,16 @@ export default class UsersController {
       // @ts-ignore - The point type expects a string in the format '(x,y)'
       payload.coordinate = `(${y},${x})`
     }
-    const user = await User.create({ ...payload, emailVerified: true })
+    const user = await User.create({
+      ...payload,
+      password: 'iuonvfhbziuhoizjfjoi',
+      emailVerified: true,
+    })
+
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString()
+    const resetExpires = DateTime.now().plus({ hours: 24 })
+
+    await PasswordReset.create({ userId: user.id, token: resetToken, expiresAt: resetExpires })
 
     // send mail create account
     let mail_type: any = 'mail_create_account'
@@ -711,10 +721,11 @@ export default class UsersController {
       '',
       {
         userId: user.id,
+        resetToken: resetToken,
       }
     )
 
-    return user
+    return await User.find(user.id)
   }
 
   async updateUserAdmin({ request }: HttpContext) {

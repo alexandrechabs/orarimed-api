@@ -40,7 +40,7 @@ export default class ReminderService {
           reminderTime = eventStart
             .setZone(timeZone)
             .minus({ days: 1 })
-            .set({ hour: 10, minute: 0, second: 0, millisecond: 0 })
+            .set({ hour: 18, minute: 0, second: 0, millisecond: 0 })
             .toUTC()
         } else if (reminderDelay === 'hour_before') {
           reminderTime = eventStart.minus({ hours: 1 })
