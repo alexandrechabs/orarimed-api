@@ -458,15 +458,6 @@ export default class UsersController {
     return result
   }
 
-  async listDoctor() {
-    return await User.query()
-      .where('role_id', 2) // Filtre pour les médecins
-      .where('active', true)
-      .where('visible', true)
-      .preload('speciality')
-      .select(['users.id', 'users.speciality_id', 'users.doctor_identifier', 'users.created_at'])
-  }
-
   async searchDoctor({ request, response }: HttpContext) {
     try {
       // Récupérer et valider les paramètres de la requête

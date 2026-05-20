@@ -63,7 +63,6 @@ router
   .get('patients/:id', [UsersController, 'showPatient'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'SECRETARY', 'ADMIN'])])
 
-router.get('doctor/list', [UsersController, 'listDoctor'])
 router.get('doctor/search', [UsersController, 'searchDoctor'])
 router.get('doctor/search/autocomplete', [UsersController, 'searchDoctorAutoComplete'])
 router.get('doctor/:id', [UsersController, 'showDoctor'])
@@ -120,7 +119,6 @@ router
   .delete('categories/:id', [CategoryController, 'delete'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
-router.get('allCenters', [CentersController, 'getAllCenters'])
 router
   .get('center', [CentersController, 'getCenters'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])

@@ -73,14 +73,6 @@ export default class CentersController {
     return center
   }
 
-  async getAllCenters() {
-    return await Center.query()
-      .where('visible', true)
-      .where('active', true)
-      .preload('speciality')
-      .select('id', 'specialityId', 'centerIdentifier')
-  }
-
   async getCenters({ auth, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
 
