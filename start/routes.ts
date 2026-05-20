@@ -8,13 +8,15 @@ import CentersController from '#controllers/centers_controller'
 import OtherController from '#controllers/other_controller'
 import CategoryController from '#controllers/categoryController'
 import ArticlesController from '#controllers/articleController'
+import SitemapController from '#controllers/sitemapController'
 
 router.get('/', async () => {
   return {
     hello: 'world',
   }
 })
-
+router.get('/sitemap.xml', [SitemapController, 'index']) // Route pour le sitemap XML
+router.get('/sitemap', [SitemapController, 'index']) // Alias sitemap
 router.post('/register', [AuthController, 'register']) // Ajout de la route d'inscription
 router.post('/login', [AuthController, 'login'])
 router.post('/forgot-password', [AuthController, 'forgotPassword'])
