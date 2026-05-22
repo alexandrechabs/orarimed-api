@@ -393,6 +393,8 @@ export default class UsersController {
         query.preload('translations')
       })
       .preload('openingHours')
+      .preload('diplomas')
+      .preload('experiences')
       .preload('centerUsers', (query) => {
         query.preload('center', (query) => {
           query.preload('speciality', (query) => {

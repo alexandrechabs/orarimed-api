@@ -8,6 +8,8 @@ import CentersController from '#controllers/centers_controller'
 import OtherController from '#controllers/other_controller'
 import CategoryController from '#controllers/categoryController'
 import ArticlesController from '#controllers/articleController'
+import DiplomasController from '#controllers/diplomas_controller'
+import ExperiencesController from '#controllers/experiences_controller'
 import SitemapController from '#controllers/sitemapController'
 
 router.get('/', async () => {
@@ -54,6 +56,32 @@ router
 
 router
   .post('user/:id/sub-specialities', [SpecialitiesController, 'saveSubSpecialitiesUsers'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router
+  .get('user/:id/diplomas', [DiplomasController, 'index'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .post('user/:id/diplomas', [DiplomasController, 'store'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .put('user/:id/diplomas/:diplomaId', [DiplomasController, 'update'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .delete('user/:id/diplomas/:diplomaId', [DiplomasController, 'destroy'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+
+router
+  .get('user/:id/experiences', [ExperiencesController, 'index'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .post('user/:id/experiences', [ExperiencesController, 'store'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .put('user/:id/experiences/:experienceId', [ExperiencesController, 'update'])
+  .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .delete('user/:id/experiences/:experienceId', [ExperiencesController, 'destroy'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 
 router

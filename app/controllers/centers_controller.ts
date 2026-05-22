@@ -104,7 +104,7 @@ export default class CentersController {
 
   async updateCenter({ auth, params, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
-    if (auth_user.roleId !== 2) {
+    if (auth_user.roleId !== 2 && auth_user.roleId !== 4) {
       return response.unauthorized({ message: 'Unauthorized' })
     }
 
