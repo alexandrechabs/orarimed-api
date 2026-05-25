@@ -51,9 +51,11 @@ export default class CentersController {
         .preload('openingHours')
         .preload('centerUsers', (query) => {
           query.preload('user', (userQuery) => {
-            userQuery.preload('speciality', (specialityQuery) => {
-              specialityQuery.preload('translations')
-            })
+            userQuery
+              .select(['id', 'firstname', 'lastname', 'email', 'avatar', 'specialityId'])
+              .preload('speciality', (specialityQuery) => {
+                specialityQuery.preload('translations')
+              })
           })
         })
     } else {
@@ -62,9 +64,11 @@ export default class CentersController {
         .preload('openingHours')
         .preload('centerUsers', (query) => {
           query.preload('user', (userQuery) => {
-            userQuery.preload('speciality', (specialityQuery) => {
-              specialityQuery.preload('translations')
-            })
+            userQuery
+              .select(['id', 'firstname', 'lastname', 'email', 'avatar', 'specialityId'])
+              .preload('speciality', (specialityQuery) => {
+                specialityQuery.preload('translations')
+              })
           })
         })
     }
@@ -202,7 +206,8 @@ export default class CentersController {
             'phoneNumber',
             'city',
             'bio',
-            'address'
+            'address',
+            'doctorIdentifier'
           )
       })
 
