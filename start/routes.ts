@@ -22,6 +22,7 @@ router.post('/register', [AuthController, 'register']) // Ajout de la route d'in
 router.post('/login', [AuthController, 'login'])
 router.post('/forgot-password', [AuthController, 'forgotPassword'])
 router.post('/reset-password', [AuthController, 'resetPassword'])
+router.get('/share/*', [OtherController, 'share'])
 router
   .post('/verify-email', [AuthController, 'verifyEmail'])
   .use([middleware.auth(), middleware.role(['USER'])])

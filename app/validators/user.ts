@@ -28,6 +28,7 @@ export const UserValidator = {
         })
         .optional(),
       language: vine.string().trim(),
+      doctorIdentifier: vine.string().trim(),
     })
   ),
 
@@ -53,6 +54,7 @@ export const UserValidator = {
         })
         .optional(),
       language: vine.string().trim().optional(),
+      doctorIdentifier: vine.string().trim().optional(),
     })
   ),
   search: vine.compile(

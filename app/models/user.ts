@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import hash from '@adonisjs/core/services/hash'
 import { compose } from '@adonisjs/core/helpers'
-import { BaseModel, beforeSave, belongsTo, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column, hasMany, manyToMany } from '@adonisjs/lucid/orm'
 import { withAuthFinder } from '@adonisjs/auth/mixins/lucid'
 import { DbAccessTokensProvider } from '@adonisjs/auth/access_tokens'
 import { Opaque } from '@adonisjs/core/types/helpers'
@@ -99,19 +99,6 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
-
-  @beforeSave()
-  public static async createDoctorIdentifier(user: User) {
-    if (user.roleId === 2) {
-      // 2 est l'ID pour le rôle docteur
-      const firstname = user.firstname?.toLowerCase().trim() || ''
-      const lastname = user.lastname?.toLowerCase().trim() || ''
-      const city = user.city?.toLowerCase().trim() || ''
-      user.doctorIdentifier = `${firstname}-${lastname}-${city}`.replace(/\s+/g, '-')
-    } else {
-      user.doctorIdentifier = null
-    }
-  }
 
   static accessTokens = DbAccessTokensProvider.forModel(User, {
     expiresIn: '180 days',

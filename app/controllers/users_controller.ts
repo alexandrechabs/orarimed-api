@@ -383,6 +383,7 @@ export default class UsersController {
         'city',
         'bio',
         'address',
+        'language',
       ])
       .preload('subSpecialitiesUsers', (query) => {
         query.preload('subSpeciality', (query) => {
@@ -678,6 +679,11 @@ export default class UsersController {
       .preload('subSpecialitiesUsers', (query) => {
         query.preload('subSpeciality', (subQuery) => {
           subQuery.preload('translations')
+        })
+      })
+      .preload('secretaryUsers', (query) => {
+        query.preload('doctor', (subQuery) => {
+          subQuery.select('id', 'firstname', 'lastname', 'email', 'avatar')
         })
       })
 
