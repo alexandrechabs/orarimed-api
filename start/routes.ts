@@ -23,9 +23,6 @@ router.post('/login', [AuthController, 'login'])
 router.post('/forgot-password', [AuthController, 'forgotPassword'])
 router.post('/reset-password', [AuthController, 'resetPassword'])
 router.get('/share/*', [OtherController, 'share'])
-router.get('/share/test', async ({ response }) => {
-  return response.send('OK')
-})
 
 router
   .post('/verify-email', [AuthController, 'verifyEmail'])
