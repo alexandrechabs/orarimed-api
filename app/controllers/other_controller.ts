@@ -4,6 +4,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import ReminderService from '#services/reminderService'
 import { DateTime } from 'luxon'
 import User from '#models/user'
+import Center from '#models/centers'
 
 @inject()
 export default class OtherController {
@@ -91,6 +92,40 @@ export default class OtherController {
       ]
         .filter(Boolean)
         .join(', ')
+
+      return response.header('Content-Type', 'text/html').send(
+        this.renderMetaPage({
+          title,
+          description,
+          keywords,
+          image,
+          url,
+        })
+      )
+    }
+
+    if (path.startsWith('/center/')) {
+      const centerId = path.split('/')[3]
+
+      const center = await Center.query()
+        .where('centerIdentifier', centerId)
+        .select('id', 'name', 'city', 'avatar', 'specialityId')
+        .preload('speciality', (query) => {
+          query.preload('translations')
+        })
+        .first()
+
+      if (!center) {
+        return response.notFound('Center not found')
+      }
+
+      const title = `${center.name} | ${center.city}`
+      const description = `${center.name} në ${center.city}. Gjeni mjekët, shërbimet dhe recenzat e pacientëve. Rezervoni një kohë të sigurt në disa klikime.`
+      const image = center.avatar
+        ? `https://orarimed.com/api/center/${center.id}/avatar/${center.avatar}`
+        : 'https://orarimed.com/hopital.png'
+      const url = `https://orarimed.com${path}`
+      const keywords = `${title},${center.name},${center.city},${center.speciality?.translations?.find((t) => t.locale === 'sq')?.name}, mjekë, kujdes shëndetësor, takime, vlerësime, shërbime, rezervime`
 
       return response.header('Content-Type', 'text/html').send(
         this.renderMetaPage({
