@@ -109,6 +109,7 @@ export default class BrevoService {
         doctor_firstname: eventData.practitioner.firstname,
         doctor_lastname: eventData.practitioner.lastname,
         title: eventData.title,
+        link: 'https://orarimed.com/appointments',
       },
       language,
     })
@@ -150,6 +151,7 @@ export default class BrevoService {
         doctor_firstname: eventData.practitioner.firstname,
         doctor_lastname: eventData.practitioner.lastname,
         title: eventData.title,
+        link: 'https://orarimed.com/appointments',
       },
       language,
     })
