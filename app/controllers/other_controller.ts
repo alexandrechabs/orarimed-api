@@ -234,12 +234,16 @@ export default class OtherController {
 
   public async updateMailStatus({ request, response }: HttpContext) {
     console.log('updateMailStatus called with body:', request.body())
-    const {
+    let {
       email,
       reason,
+      event,
       'message-id': messageId,
-    } = request.only(['email', 'reason', 'message-id'])
+    } = request.only(['email', 'reason', 'event', 'message-id'])
 
+    if (!reason) {
+      reason = event
+    }
     if (!messageId || !reason) {
       return response.badRequest({
         message: 'Missing messageId or reason',
@@ -258,7 +262,7 @@ export default class OtherController {
       })
     }
 
-    // Update the notification status
     await notification.merge({ status: reason }).save()
+    return response.ok({ success: true })
   }
 }
