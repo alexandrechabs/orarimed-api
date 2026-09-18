@@ -200,7 +200,7 @@ export default class NotificationService {
             .merge({
               status: 'sent',
               sentAt: DateTime.now(),
-              mailId: result?.messageId.slice(1, -1) || null,
+              mailId: result?.messageId || null,
             })
             .save()
         } else {
