@@ -250,6 +250,24 @@ export default class OtherController {
       })
     }
 
+    if (
+      ![
+        'pending',
+        'blocked',
+        'invalid_email',
+        'sent',
+        'opened',
+        'unique_opened',
+        'spam',
+        'delivered',
+        'failed',
+      ].includes(reason)
+    ) {
+      return response.badRequest({
+        message: `Unsupported reason: ${reason}`,
+      })
+    }
+
     // Find the notification by messageId
     const notification = await Notification.query()
       .where('mailId', messageId)
