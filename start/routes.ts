@@ -23,6 +23,7 @@ router.post('/login', [AuthController, 'login'])
 router.post('/forgot-password', [AuthController, 'forgotPassword'])
 router.post('/reset-password', [AuthController, 'resetPassword'])
 router.get('/share/*', [OtherController, 'share'])
+router.post('/update_mail_status', [OtherController, 'updateMailStatus'])
 
 router
   .post('/verify-email', [AuthController, 'verifyEmail'])
@@ -119,6 +120,9 @@ router
 
 router
   .get('events', [EventsController, 'index'])
+  .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
+router
+  .get('events/:id', [EventsController, 'getEventId'])
   .use([middleware.auth(), middleware.role(['USER', 'DOCTOR', 'SECRETARY', 'ADMIN'])])
 router
   .put('events/:id', [EventsController, 'update'])

@@ -244,6 +244,51 @@ export default class EventsController {
     }
   }
 
+  async getEventId({ auth, request, response }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
+    let eventId = request.param('id')
+
+    const event = await Event.query()
+      .where('id', eventId)
+      .preload('patient', (query) => {
+        query.select(['id', 'firstname', 'lastname', 'email', 'phoneNumber'])
+      })
+      .first()
+
+    if (!event) {
+      return response.notFound({ message: 'Event not found' })
+    }
+
+    if (auth_user.roleId === 1) {
+      let contact = await Contact.query()
+        .where('patientId', auth_user.id)
+        .where('id', event.contactId!)
+        .first()
+      if (!contact) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+
+    if (auth_user.roleId === 2) {
+      if (event.practitionerId !== auth_user.id) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+
+    if (auth_user.roleId === 3) {
+      // Secretary can update events for doctors they are associated with
+      const secretary = await SecretaryUser.query()
+        .where('secretaryId', auth_user.id)
+        .where('doctorId', event.practitionerId)
+        .first()
+      if (!secretary) {
+        return response.unauthorized({ message: 'Unauthorized' })
+      }
+    }
+
+    return event
+  }
+
   async update({ auth, request, response }: HttpContext) {
     const auth_user = auth.user! as unknown as User
     const data = (await request.validateUsing(EventValidator.update)) as EventData

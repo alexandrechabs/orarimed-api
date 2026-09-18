@@ -47,6 +47,9 @@ export default class Notification extends BaseModel {
   @column()
   declare errorMessage: string | null
 
+  @column()
+  declare mailId: string | null
+
   @column.dateTime()
   declare sentAt: DateTime | null
 

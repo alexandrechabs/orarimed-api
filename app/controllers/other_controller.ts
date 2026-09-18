@@ -6,6 +6,7 @@ import { DateTime } from 'luxon'
 import User from '#models/user'
 import Center from '#models/centers'
 import Speciality from '#models/speciality'
+import Notification from '#models/notifications'
 
 @inject()
 export default class OtherController {
@@ -229,5 +230,31 @@ export default class OtherController {
         </body>
         </html>
         `
+  }
+
+  public async updateMailStatus({ request, response }: HttpContext) {
+    console.log('updateMailStatus called with body:', request.body())
+    const { email, event, 'message-id': messageId } = request.only(['email', 'event', 'message-id'])
+
+    if (!messageId || !event) {
+      return response.badRequest({
+        message: 'Missing messageId or event',
+      })
+    }
+
+    // Find the notification by messageId
+    const notification = await Notification.query()
+      .where('mailId', messageId)
+      .andWhere('recipient', email)
+      .first()
+
+    if (!notification) {
+      return response.notFound({
+        message: 'Notification not found',
+      })
+    }
+
+    // Update the notification status
+    await notification.merge({ status: event }).save()
   }
 }

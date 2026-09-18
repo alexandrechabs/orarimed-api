@@ -193,13 +193,14 @@ export default class NotificationService {
           throw new Error(`Unknown notification type: ${type}`)
       }
 
-      // Mettre à jour le statut de la notification
+      // Mettre à jour le statut de la notification avec l'id du mail si l'envoi a réussi, sinon mettre à jour le statut en échec
       if (notifCreate) {
         if (result && result.success) {
           await notification
             .merge({
               status: 'sent',
               sentAt: DateTime.now(),
+              mailId: result?.messageId.slice(1, -1) || null,
             })
             .save()
         } else {
