@@ -88,6 +88,7 @@ export default class ArticleService {
    */
   public async list(localeCode: string, page = 1, limit = 10) {
     const locale = await Locale.findByOrFail('code', localeCode)
+    console.log('locale', locale)
     const paginated = await Article.query()
       .where('locale_id', locale.id)
       .where('status', 'published')

@@ -19,7 +19,19 @@ export default class extends BaseSchema {
       table.string('recipient').notNullable() // email or phone number
       table.string('subject').nullable()
       table.text('content').notNullable()
-      table.enum('status', ['pending', 'sent', 'delivered', 'failed']).defaultTo('pending')
+      table
+        .enum('status', [
+          'pending',
+          'blocked',
+          'invalid_email',
+          'sent',
+          'opened',
+          'unique_opened',
+          'spam',
+          'delivered',
+          'failed',
+        ])
+        .defaultTo('pending')
       table.text('error_message').nullable()
       table.timestamp('sent_at').nullable()
       table.timestamp('delivered_at').nullable()

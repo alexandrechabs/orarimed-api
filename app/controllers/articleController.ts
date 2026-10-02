@@ -44,6 +44,7 @@ export default class ArticlesController {
       'featuredImage',
       'title',
       'slug',
+      'localeId',
       'content',
       'excerpt',
       'seoTitle',
@@ -110,7 +111,7 @@ export default class ArticlesController {
 
     const locale = request.input('locale')
 
-    if (authUser && (authUser.roleId === 4 || authUser.roleId === 2)) {
+    if (authUser && authUser.roleId === 4) {
       // For admin
       return this.service.listForAdmin(page, limit)
     }

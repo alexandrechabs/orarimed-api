@@ -259,10 +259,12 @@ export default class UsersController {
     return reasons
   }
 
-  async getReasons({ params, response }: HttpContext) {
+  async getReasons({ auth, params, response }: HttpContext) {
+    const auth_user = auth.user! as unknown as User
     const user = await User.find(params.id)
 
-    if (!user || user.roleId !== 2) {
+    // Check if user exists and if the user is the same as the authenticated user for doctor (roleId = 2) or if user is admin (roleId = 4)
+    if (!user || (user.id !== auth_user.id && auth_user.roleId !== 4)) {
       return response.notFound({ error: 'User not found' })
     }
 
