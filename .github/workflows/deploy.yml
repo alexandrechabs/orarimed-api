@@ -22,9 +22,11 @@ jobs:
       - name: Deploy via SSH
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
+            set -e
             cd /home/ubuntu/orarimed-api
-            git pull origin main
-            docker compose -f docker-compose-prod.yml up -d --build --force-recreate adonis_app-prod
+            git pull --ff-only origin main
+            git log -1 --oneline
+            docker compose -f docker-compose-prod.yml up -d --build
             docker system prune -af
             docker builder prune -af
           EOF
