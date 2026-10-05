@@ -186,6 +186,9 @@ router
 router
   .put('admin/user/:id', [UsersController, 'updateUserAdmin'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
+router
+  .get('admin/statistics', [() => import('#controllers/statistics_controller'), 'index'])
+  .use([middleware.auth(), middleware.role(['ADMIN'])])
 
 // Articles
 router.get('articles', [ArticlesController, 'index'])
