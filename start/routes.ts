@@ -11,6 +11,7 @@ import ArticlesController from '#controllers/articleController'
 import DiplomasController from '#controllers/diplomas_controller'
 import ExperiencesController from '#controllers/experiences_controller'
 import SitemapController from '#controllers/sitemapController'
+import StatisticsController from '#controllers/statistics_controller'
 
 router.get('/', async () => {
   return {
@@ -187,7 +188,7 @@ router
   .put('admin/user/:id', [UsersController, 'updateUserAdmin'])
   .use([middleware.auth(), middleware.role(['DOCTOR', 'ADMIN'])])
 router
-  .get('admin/statistics', [() => import('#controllers/statistics_controller'), 'index'])
+  .get('admin/statistics', [StatisticsController, 'index'])
   .use([middleware.auth(), middleware.role(['ADMIN'])])
 
 // Articles
