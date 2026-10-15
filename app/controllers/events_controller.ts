@@ -127,7 +127,11 @@ export default class EventsController {
 
     const event = await Event.create(eventData)
 
-    if (type === 'appointment' && contact) {
+    if (
+      type === 'appointment' &&
+      contact &&
+      DateTime.fromJSDate(data.start as unknown as Date) > DateTime.now()
+    ) {
       // send mail and add notification via queue
       await this.reminderService.scheduleReminderForEvent(
         event.id + event.start!.toFormat('yyyy-MM-dd-HH-mm') + '',

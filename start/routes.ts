@@ -97,6 +97,9 @@ router
 
 router.get('doctor/search', [UsersController, 'searchDoctor'])
 router.get('doctor/search/autocomplete', [UsersController, 'searchDoctorAutoComplete'])
+router
+  .get('doctor/statistics', [StatisticsController, 'indexDoctor'])
+  .use([middleware.auth(), middleware.role(['DOCTOR'])])
 router.get('doctor/:id', [UsersController, 'showDoctor'])
 router.get('doctor/:id/available-slots', [UsersController, 'getAvailableSlots'])
 router.get('doctor/:id/reasons', [UsersController, 'getReasonsClient'])

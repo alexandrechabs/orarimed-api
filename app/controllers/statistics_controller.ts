@@ -4,9 +4,72 @@ import Center from '#models/centers'
 import Speciality from '#models/speciality'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import type { HttpContext } from '@adonisjs/core/http'
 import Roles from '../enums/roles.js'
 
 export default class StatisticsController {
+  async indexDoctor({ auth }: HttpContext) {
+    const doctorId = auth.user!.id
+    const now = DateTime.now().setZone('Europe/Paris')
+    const todayStart = now.startOf('day')
+    const tomorrowStart = todayStart.plus({ days: 1 })
+    const weekStart = now.startOf('week')
+    const nextWeekStart = weekStart.plus({ weeks: 1 })
+
+    const [
+      todayAppointments,
+      weekAppointments,
+      todayAppointmentStatusRows,
+      weekAppointmentStatusRows,
+    ] = await Promise.all([
+      Event.query()
+        .where('practitionerId', doctorId)
+        .where('type', 'appointment')
+        .where('start', '>=', todayStart.toJSDate())
+        .where('start', '<', tomorrowStart.toJSDate())
+        .count('* as total'),
+      Event.query()
+        .where('practitionerId', doctorId)
+        .where('type', 'appointment')
+        .where('start', '>=', weekStart.toJSDate())
+        .where('start', '<', nextWeekStart.toJSDate())
+        .count('* as total'),
+      db
+        .from('events')
+        .select('status')
+        .count('* as total')
+        .where('start', '>=', todayStart.toJSDate())
+        .where('start', '<', tomorrowStart.toJSDate())
+        .where('practitioner_id', doctorId)
+        .where('type', 'appointment')
+        .groupBy('status')
+        .orderBy('status', 'asc'),
+      db
+        .from('events')
+        .select('status')
+        .count('* as total')
+        .where('start', '>=', weekStart.toJSDate())
+        .where('start', '<', nextWeekStart.toJSDate())
+        .where('practitioner_id', doctorId)
+        .where('type', 'appointment')
+        .groupBy('status')
+        .orderBy('status', 'asc'),
+    ])
+
+    return {
+      todayAppointments: Number(todayAppointments[0]?.$extras.total ?? 0),
+      todayAppointmentStatuses: todayAppointmentStatusRows.map((row) => ({
+        status: row.status ?? 'unknown',
+        appointments: Number(row.total),
+      })),
+      weekAppointments: Number(weekAppointments[0]?.$extras.total ?? 0),
+      weekAppointmentStatuses: weekAppointmentStatusRows.map((row) => ({
+        status: row.status ?? 'unknown',
+        appointments: Number(row.total),
+      })),
+    }
+  }
+
   async index() {
     const currentMonth = DateTime.now().startOf('month')
     const firstMonth = currentMonth.minus({ months: 11 })
